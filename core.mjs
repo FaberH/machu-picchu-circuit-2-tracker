@@ -33,3 +33,55 @@ export function classify(snapshot, history, now) {
   if(isZero(snapshot)&&priorZero) return {status:'stale',stopForDay:false,reason:'Previous collection day sold out this same visit date'};
   return {status:'ok',phase:peru(now).hour<6?'preopen':'sales',stopForDay:peru(now).hour>=6&&isZero(snapshot)};
 }
+
+// Kept separate from filesystem writes so failure paths can be tested offline.
+export async function readLoaded(page, diagnostics, {samples=15,pollMs=1000,timeoutMs=45000}={}) {
+  diagnostics.stage='navigation';
+  const response=await page.goto(SOURCE,{waitUntil:'domcontentloaded',timeout:timeoutMs});
+  diagnostics.httpStatus=response?.status()??null;
+  if(response && response.status()>=400) throw new Error(`Ticket page returned HTTP ${response.status()}`);
+  diagnostics.stage='waiting-for-route-cards';
+  await page.getByText('Ruta 2-B:',{exact:false}).first().waitFor({timeout:timeoutMs});
+  diagnostics.stage='parsing-route-cards';
+  let previous;
+  for(let i=0;i<samples;i++) {
+    diagnostics.raw=await page.locator('body').innerText();
+    diagnostics.samples=(diagnostics.samples||0)+1;
+    try {
+      const current=parse(diagnostics.raw);
+      diagnostics.lastParsed=current;
+      if(JSON.stringify(current)===JSON.stringify(previous)) return current;
+      previous=current;
+    } catch(error) {
+      diagnostics.lastParseError=error.message;
+      previous=undefined;
+    }
+    await page.waitForTimeout(pollMs);
+  }
+  throw new Error(`No stable valid route reading after ${samples} samples. Last parsing error: ${diagnostics.lastParseError||'none; inventory kept changing'}`);
+}
+
+export async function readConfirmed(page, diagnostics, options) {
+  let snapshot=await readLoaded(page,diagnostics,options);
+  if(isZero(snapshot)) {
+    diagnostics.zeroBeforeReload=snapshot;
+    const confirmed=await readLoaded(page,diagnostics,options);
+    diagnostics.stage='confirming-sold-out';
+    if(JSON.stringify(snapshot)!==JSON.stringify(confirmed)) throw new Error('Sold-out reading changed after reload; retry next run');
+    snapshot=confirmed;
+  }
+  return snapshot;
+}
+
+export async function captureFailure(page, diagnostics, write) {
+  diagnostics.evidenceErrors=[];
+  if(!page) return;
+  for(const [name,read] of [
+    ['page.txt',()=>page.locator('body').innerText()],
+    ['page.html',()=>page.content()],
+    ['page.png',()=>page.screenshot({fullPage:true,timeout:10000})],
+  ]) {
+    try {const value=await read();write(name,value);if(name==='page.txt')diagnostics.raw=value;}
+    catch(error){diagnostics.evidenceErrors.push({file:name,error:error.message});}
+  }
+}
