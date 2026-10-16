@@ -21,3 +21,13 @@ A first observation at zero does not identify the sell-out time. Route totals do
 Requires Node 22. Install with npm ci, run tests with npm test, install Chromium with npx playwright install chromium, then collect with npm run collect. The same daily stop and time-window rules apply locally.
 
 To trigger a cloud check: Actions > Collect Circuit 2 tickets > Run workflow. The workflow uses the repository-scoped GitHub token to commit public observations. No secrets are required.
+
+## If collection fails
+
+Open the failed run in Actions. Named steps separate setup, tests, reading tickets and saving data. Collection errors identify their stage and original cause. Download the collection-diagnostics artifact from the run summary within seven days: it includes diagnostics/collection.json, network/browser errors, the last parsing error, page text, HTML and a screenshot where available. A browser-launch failure cannot provide a page screenshot. If saving to GitHub fails, the artifact retains collected data.
+
+The 13 tests include simulated network errors, HTTP failures, missing route cards, malformed layouts, loading placeholders, unstable counts, conflicting zero confirmations and evidence-capture failures, alongside date and stop rules.
+
+For a controlled test, select the diagnostic_drill checkbox under Run workflow. This loads an offline broken-page fixture, saves evidence under diagnostic-drill/ and intentionally fails. It never contacts the ticket website or commits fake ticket readings. Scheduled runs keep this option off.
+
+A job GitHub never starts has no logs or screenshot: inspect missing scheduled runs separately. Tests and diagnostics help locate failures, but cannot guarantee the root cause of every upstream outage.
