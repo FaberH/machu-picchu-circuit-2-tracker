@@ -22,7 +22,7 @@ export const isZero = s => s.routes.every(r=>r.available===0);
 export function gate(history, now) {
   const {date,hour}=peru(now);
   if(date>'2026-12-31') return 'Collection period complete';
-  if(hour<6||hour>=22) return 'Outside 06:00–22:00 Peru collection window';
+  if(hour<5||(hour===5&&new Date(now).getUTCMinutes()<30)||hour>=22) return 'Outside 05:30–22:00 Peru collection window';
   if(history.some(s=>s.status==='ok'&&s.stopForDay&&peru(s.observedAt).date===date)) return 'Both routes sold out today';
   return null;
 }
@@ -31,5 +31,5 @@ export function classify(snapshot, history, now) {
   if(snapshot.visitDate<=today) return {status:'stale',stopForDay:false,reason:'Visit date is not in the future'};
   const priorZero=history.some(s=>s.status==='ok'&&s.visitDate===snapshot.visitDate&&isZero(s)&&peru(s.observedAt).date<today);
   if(isZero(snapshot)&&priorZero) return {status:'stale',stopForDay:false,reason:'Previous collection day sold out this same visit date'};
-  return {status:'ok',stopForDay:isZero(snapshot)};
+  return {status:'ok',phase:peru(now).hour<6?'preopen':'sales',stopForDay:peru(now).hour>=6&&isZero(snapshot)};
 }
