@@ -1,0 +1,1 @@
+{"name":"machu-picchu-circuit-2-tracker","version":"1.0.0","private":true,"type":"module","scripts":{"test":"node --test test.mjs","collect":"node collect.mjs"},"dependencies":{"playwright":"1.63.0"}}
