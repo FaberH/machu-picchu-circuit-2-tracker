@@ -1,6 +1,8 @@
 name: Collect Circuit 2 tickets
 on:
   schedule:
+    # Pre-opening readings from 05:30 Peru, then sales from 06:02.
+    - cron: '30-59/5 10 * * *'
     - cron: '2-59/5 11-23,0-2 * * *'
   workflow_dispatch:
   push:
