@@ -1,0 +1,51 @@
+name: Collect Circuit 2 tickets
+on:
+  schedule:
+    - cron: '2-59/5 11-23,0-2 * * *'
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['*.mjs', 'package*.json', '.github/workflows/collect.yml']
+permissions:
+  contents: write
+concurrency:
+  group: ticket-collection
+  cancel-in-progress: false
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --test test.mjs
+      - name: Check collection window and daily sell-out
+        id: gate
+        run: node collect.mjs --gate
+      - if: steps.gate.outputs.collect == 'true'
+        run: npm ci
+      - if: steps.gate.outputs.collect == 'true'
+        run: npx playwright install --with-deps chromium
+      - name: Read live tickets
+        if: steps.gate.outputs.collect == 'true'
+        id: scrape
+        continue-on-error: true
+        run: node collect.mjs
+      - name: Preserve observations, including failed reads
+        if: always() && steps.scrape.outcome != 'skipped'
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data REPORT.md
+          if ! git diff --cached --quiet; then
+            git commit -m 'Record ticket observation'
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
+      - name: Report failed or stale collection
+        if: steps.scrape.outcome == 'failure'
+        run: exit 1
