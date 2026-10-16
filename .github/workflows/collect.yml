@@ -1,10 +1,16 @@
 name: Collect Circuit 2 tickets
+run-name: ${{ inputs.diagnostic_drill && 'Diagnostic drill (expected failure)' || 'Circuit 2 collection' }}
 on:
   schedule:
-    # Pre-opening readings from 05:30 Peru, then sales from 06:02.
+    # Capture pre-opening inventory from 05:30 Peru, then sales from 06:02.
     - cron: '30-59/5 10 * * *'
     - cron: '2-59/5 11-23,0-2 * * *'
   workflow_dispatch:
+    inputs:
+      diagnostic_drill:
+        description: 'Offline failure drill: validates evidence upload; intentionally fails'
+        type: boolean
+        default: false
   push:
     branches: [main]
     paths: ['*.mjs', 'package*.json', '.github/workflows/collect.yml']
@@ -27,7 +33,14 @@ jobs:
       - run: node --test test.mjs
       - name: Check collection window and daily sell-out
         id: gate
-        run: node collect.mjs --gate
+        env:
+          DRILL: ${{ inputs.diagnostic_drill }}
+        run: |
+          if [ "$DRILL" = "true" ]; then
+            echo 'collect=true' >> "$GITHUB_OUTPUT"
+          else
+            node collect.mjs --gate
+          fi
       - if: steps.gate.outputs.collect == 'true'
         run: npm ci
       - if: steps.gate.outputs.collect == 'true'
@@ -36,9 +49,18 @@ jobs:
         if: steps.gate.outputs.collect == 'true'
         id: scrape
         continue-on-error: true
-        run: node collect.mjs
+        env:
+          DRILL: ${{ inputs.diagnostic_drill }}
+        run: |
+          if [ "$DRILL" = "true" ]; then
+            mkdir -p diagnostic-drill
+            cd diagnostic-drill
+            node ../collect.mjs --diagnostic-drill
+          else
+            node collect.mjs
+          fi
       - name: Preserve observations, including failed reads
-        if: always() && steps.scrape.outcome != 'skipped'
+        if: always() && inputs.diagnostic_drill != true && (steps.scrape.outcome == 'success' || steps.scrape.outcome == 'failure')
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
@@ -48,6 +70,18 @@ jobs:
             git pull --rebase origin main
             git push origin HEAD:main
           fi
+      - name: Upload failure evidence
+        if: always() && (failure() || steps.scrape.outcome == 'failure')
+        uses: actions/upload-artifact@v4
+        with:
+          name: collection-diagnostics-${{ github.run_id }}
+          path: |
+            diagnostics/
+            data/
+            REPORT.md
+            diagnostic-drill/
+          retention-days: 7
+          if-no-files-found: warn
       - name: Report failed or stale collection
         if: steps.scrape.outcome == 'failure'
         run: exit 1
