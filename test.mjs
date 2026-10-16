@@ -12,7 +12,8 @@ test('stops only confirmed both-zero today and resumes next day',()=>{
  const history=[{...zero,observedAt:'2026-10-16T18:00:00Z',status:'ok',stopForDay:true}];
  assert.match(gate(history,'2026-10-16T19:00:00Z'),/sold out/);
  assert.equal(gate(history,'2026-10-17T11:00:00Z'),null);
- assert.match(gate([],'2026-10-17T10:59:00Z'),/Outside/);
+ assert.match(gate([],'2026-10-17T10:29:00Z'),/Outside/);
+ assert.equal(gate([],'2026-10-17T10:30:00Z'),null);
  assert.equal(gate([{...history[0],status:'error'}],'2026-10-16T19:00:00Z'),null);
  assert.equal(classify(parse(raw),[],'2026-10-16T19:00:00Z').stopForDay,false);
 });
@@ -22,4 +23,12 @@ test('stale prior inventory cannot stop a new day',()=>{
  assert.equal(classify(future,history,'2026-10-17T11:00:00Z').status,'stale');
  assert.equal(classify(future,[],'2026-10-17T11:00:00Z').stopForDay,true);
  assert.match(gate([],'2027-01-01T11:00:00Z'),/complete/);
+});
+
+test('pre-opening zeros cannot pause collection before sales begin',()=>{
+ const before=classify(zero,[],'2026-10-16T10:55:00Z');
+ assert.equal(before.phase,'preopen');
+ assert.equal(before.stopForDay,false);
+ assert.equal(gate([{...zero,...before,observedAt:'2026-10-16T10:55:00Z'}],'2026-10-16T11:00:00Z'),null);
+ assert.equal(classify(zero,[],'2026-10-16T11:00:00Z').stopForDay,true);
 });
