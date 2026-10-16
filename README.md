@@ -6,7 +6,7 @@ Tracks public in-person ticket availability for routes 2-A and 2-B at https://tu
 
 ## Schedule
 
-Checks about every five minutes from 06:02 to 21:57 Peru time. GitHub can delay or drop scheduled runs, so actual observation timestamps are saved. Once both routes are confirmed at zero, subsequent jobs skip the website for the rest of the Peru day. Collection resumes the following morning. A second page load confirms all-zero counts. Stale dates and errors never trigger the pause. Restocks after the daily pause are unobserved.
+Checks about every five minutes from 05:30 to 21:57 Peru time. GitHub can delay or drop scheduled runs, so actual observation timestamps are saved. Pre-opening readings are tagged separately; zeros before 06:00 never pause collection. Once both routes are confirmed at zero during sales, subsequent jobs skip the website for the rest of the Peru day. Collection resumes the following morning. A second page load confirms all-zero counts. Stale dates and errors never trigger the pause. Restocks after the daily pause are unobserved.
 
 Collection stops contacting the source after December 31, 2026. Disable the workflow in Actions afterward to stop lightweight scheduled jobs. GitHub may disable schedules after 60 days without repository activity; inspect Actions periodically.
 
