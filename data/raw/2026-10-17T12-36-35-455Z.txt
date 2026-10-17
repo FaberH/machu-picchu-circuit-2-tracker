@@ -1,0 +1,106 @@
+Centro
+
+Cultural
+
+Venta presencial
+
+Inicia: 06:00 AM
+
+Turnos asignados
+
+Disponibles: 0
+Entregados: 1000
+
+Disponibilidad para el día
+
+18/10/2026
+keyboard_double_arrow_down
+
+Ruta 1-A: Montaña Machupicchu
+
+50
+
+AFORO
+
+50
+
+VENDIDOS
+
+0
+
+DISPONIBLES
+
+Ruta 1-B: Terraza superior
+
+100
+
+AFORO
+
+100
+
+VENDIDOS
+
+0
+
+DISPONIBLES
+
+Ruta 2-A: Clásico Diseñada
+
+600
+
+AFORO
+
+600
+
+VENDIDOS
+
+0
+
+DISPONIBLES
+
+Ruta 2-B: Terraza Inferior
+
+100
+
+AFORO
+
+100
+
+VENDIDOS
+
+0
+
+DISPONIBLES
+
+Ruta 3-A: Montaña Waynapicchu
+
+50
+
+AFORO
+
+50
+
+VENDIDOS
+
+0
+
+DISPONIBLES
+
+Ruta 3-B: Realeza diseñada
+
+100
+
+AFORO
+
+100
+
+VENDIDOS
+
+0
+
+DISPONIBLES
+
+Sede central: Av. Javier Prado Este n.° 2465 - San Borja - Lima - Perú
+
+menu_book
+Libro de reclamaciones

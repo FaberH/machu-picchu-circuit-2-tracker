@@ -1,8 +1,8 @@
 {
-  "observedAt": "2026-10-16T22:52:18.354Z",
-  "collectionDate": "2026-10-16",
+  "observedAt": "2026-10-17T12:36:35.455Z",
+  "collectionDate": "2026-10-17",
   "source": "https://tuboleto.cultura.pe/cusco/1000boletos",
-  "visitDate": "2026-10-17",
+  "visitDate": "2026-10-18",
   "routes": [
     {
       "route": "2-A",
@@ -18,6 +18,7 @@
     }
   ],
   "status": "ok",
+  "phase": "sales",
   "stopForDay": true,
-  "rawFile": "data/raw/2026-10-16T22-52-18-354Z.txt"
+  "rawFile": "data/raw/2026-10-17T12-36-35-455Z.txt"
 }
