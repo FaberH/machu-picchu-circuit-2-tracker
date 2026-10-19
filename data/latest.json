@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "observedAt": "2026-10-19T19:54:27.294Z",
+  "observedAt": "2026-10-19T21:29:56.125Z",
   "source": "https://tuboleto.cultura.pe/disponibilidad/llaqta_machupicchu",
   "collectionDate": "2026-10-19",
   "ticketDesk": {
@@ -78,8 +78,8 @@
           "name": "Ruta 1-A: Montaña Machupicchu",
           "circuit": "Circuito 1 - Panorámico",
           "capacity": 50,
-          "sold": 2,
-          "available": 48
+          "sold": 7,
+          "available": 43
         },
         {
           "id": 8,
@@ -87,8 +87,8 @@
           "name": "Ruta 1-B: Terraza superior",
           "circuit": "Circuito 1 - Panorámico",
           "capacity": 100,
-          "sold": 16,
-          "available": 84
+          "sold": 28,
+          "available": 72
         },
         {
           "id": 11,
@@ -96,8 +96,8 @@
           "name": "Ruta 2-A: Clásico Diseñada",
           "circuit": "Circuito 2 - Circuito clásico",
           "capacity": 600,
-          "sold": 599,
-          "available": 1
+          "sold": 600,
+          "available": 0
         },
         {
           "id": 12,
@@ -105,8 +105,8 @@
           "name": "Ruta 2-B: Terraza Inferior",
           "circuit": "Circuito 2 - Circuito clásico",
           "capacity": 100,
-          "sold": 99,
-          "available": 1
+          "sold": 100,
+          "available": 0
         },
         {
           "id": 13,
@@ -114,8 +114,8 @@
           "name": "Ruta 3-A: Montaña Waynapicchu",
           "circuit": "Circuito 3 - Machupicchu realeza",
           "capacity": 50,
-          "sold": 20,
-          "available": 30
+          "sold": 30,
+          "available": 20
         },
         {
           "id": 14,
@@ -123,8 +123,8 @@
           "name": "Ruta 3-B: Realeza diseñada",
           "circuit": "Circuito 3 - Machupicchu realeza",
           "capacity": 100,
-          "sold": 40,
-          "available": 60
+          "sold": 63,
+          "available": 37
         }
       ]
     }
@@ -132,5 +132,5 @@
   "status": "ok",
   "phase": "sales",
   "stopForDay": false,
-  "rawFile": "data/raw/2026-10-19T19-54-27-294Z.json"
+  "rawFile": "data/raw/2026-10-19T21-29-56-125Z.json"
 }
