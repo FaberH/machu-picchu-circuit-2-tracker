@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "observedAt": "2026-10-19T17:05:28.556Z",
+  "observedAt": "2026-10-19T17:11:34.074Z",
   "source": "https://tuboleto.cultura.pe/disponibilidad/llaqta_machupicchu",
   "collectionDate": "2026-10-19",
   "ticketDesk": {
@@ -131,5 +131,5 @@
   "status": "ok",
   "phase": "sales",
   "stopForDay": false,
-  "rawFile": "data/raw/2026-10-19T17-05-28-556Z.json"
+  "rawFile": "data/raw/2026-10-19T17-11-34-074Z.json"
 }
