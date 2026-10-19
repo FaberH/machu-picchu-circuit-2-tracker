@@ -115,6 +115,18 @@ test('API failures and invalid server time are never converted to zero', async (
   await assert.rejects(fetchRoutes('2026-10-21', async () => jsonResponse({tiempoServidor: 'bad'})), /server time response is invalid/i);
 });
 
+test('Cloudflare mode can keep route data when only the ticket-desk counter fails', async () => {
+  const fakeFetch = async url => {
+    if (url.includes('tickets-por-fecha')) return jsonResponse({}, 530);
+    if (url.endsWith('/tiempo-servidor')) return jsonResponse({tiempoServidor: 1792428932364});
+    return jsonResponse(apiRows);
+  };
+  const snapshot = await collectSnapshot('2026-10-19T16:00:00Z', fakeFetch, {ticketDeskRequired: false});
+  assert.equal(snapshot.ticketDesk, null);
+  assert.match(snapshot.warning, /HTTP 530/);
+  assert.equal(snapshot.visitDates.flatMap(day => day.routes).length, 12);
+});
+
 test('flattens new and legacy observations for CSV and graphs', () => {
   const modern = {
     observedAt: '2026-10-19T16:00:00Z', collectionDate: '2026-10-19', status: 'ok',

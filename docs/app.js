@@ -1,5 +1,6 @@
 const colors = ['#0c694f', '#d69336', '#3b6aa0', '#a34e73', '#6e7f3e', '#7557a8'];
 const state = {data: null, visitDate: null, selected: new Set()};
+const apiBase = String(window.TICKET_API_BASE || '').replace(/\/$/, '');
 const $ = selector => document.querySelector(selector);
 const svg = (name, attributes = {}) => {
   const node = document.createElementNS('http://www.w3.org/2000/svg', name);
@@ -135,18 +136,37 @@ function render() {
 
 async function start() {
   try {
-    const response = await fetch('data.json', {cache: 'no-store'});
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    state.data = await response.json();
-    const dates = [...new Set(state.data.observations.map(row => row.visitDate))].sort().reverse();
+    const load = async visitDate => {
+      const endpoint = apiBase
+        ? `${apiBase}/api/data${visitDate ? `?visitDate=${encodeURIComponent(visitDate)}` : ''}`
+        : 'data.json';
+      const response = await fetch(endpoint, {cache: 'no-store'});
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return response.json();
+    };
+    state.data = await load();
+    const dates = state.data.dates || [...new Set(state.data.observations.map(row => row.visitDate))].sort().reverse();
     if (!dates.length) throw new Error('No observations have been collected yet');
-    state.visitDate = dates[0];
+    state.visitDate = state.data.selectedDate || dates[0];
     const select = $('#visit-date');
     select.replaceChildren(...dates.map(date => new Option(date, date)));
-    select.addEventListener('change', () => {
-      state.visitDate = select.value;
-      state.selected.clear();
-      render();
+    select.value = state.visitDate;
+    if (apiBase) $('#download-link').href = `${apiBase}/api/observations.csv?visitDate=${encodeURIComponent(state.visitDate)}`;
+    select.addEventListener('change', async () => {
+      select.disabled = true;
+      try {
+        state.visitDate = select.value;
+        state.selected.clear();
+        if (apiBase) {
+          state.data = await load(state.visitDate);
+          $('#download-link').href = `${apiBase}/api/observations.csv?visitDate=${encodeURIComponent(state.visitDate)}`;
+        }
+        render();
+      } catch (error) {
+        $('#status').textContent = `Dashboard data unavailable: ${error.message}`;
+      } finally {
+        select.disabled = false;
+      }
     });
     render();
   } catch (error) {

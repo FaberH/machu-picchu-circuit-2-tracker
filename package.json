@@ -1,2 +1,1 @@
-{"name":"machu-picchu-ticket-pulse","version":"2.0.0","private":true,"type":"module","scripts":{"test":"node --test test.mjs","collect":"node collect.mjs","build:site":"node build-site.mjs"}}
-
+{"name":"machu-picchu-ticket-pulse","version":"3.0.0","private":true,"type":"module","scripts":{"test":"node --test test.mjs cloudflare/worker.test.mjs","collect":"node collect.mjs","build:site":"node build-site.mjs","cf:dev":"wrangler dev","cf:deploy":"wrangler deploy"},"devDependencies":{"wrangler":"4.151.2"}}

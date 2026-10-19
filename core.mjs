@@ -124,17 +124,22 @@ export async function fetchTicketDesk(collectionDate, fetchImpl = fetch) {
   return {capacity: DAILY_CAPACITY, issued, available: DAILY_CAPACITY - issued};
 }
 
-export async function collectSnapshot(now = new Date(), fetchImpl = fetch) {
+export async function collectSnapshot(now = new Date(), fetchImpl = fetch, options = {}) {
   const collectionDate = peru(now).date;
   const dates = visitDatesFor(collectionDate);
-  const [ticketDesk, ...routeSets] = await Promise.all([
+  const [deskResult, ...routeResults] = await Promise.allSettled([
     fetchTicketDesk(collectionDate, fetchImpl),
     ...dates.map(date => fetchRoutes(date, fetchImpl)),
   ]);
+  if (options.ticketDeskRequired !== false && deskResult.status === 'rejected') throw deskResult.reason;
+  const rejectedRoute = routeResults.find(result => result.status === 'rejected');
+  if (rejectedRoute) throw rejectedRoute.reason;
+  const ticketDesk = deskResult.status === 'fulfilled' ? deskResult.value : null;
   return {
     collectionDate,
     ticketDesk,
-    visitDates: dates.map((visitDate, index) => ({visitDate, routes: routeSets[index]})),
+    warning: deskResult.status === 'rejected' ? `Ticket desk unavailable: ${deskResult.reason.message}` : null,
+    visitDates: dates.map((visitDate, index) => ({visitDate, routes: routeResults[index].value})),
   };
 }
 

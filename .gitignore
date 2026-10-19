@@ -1,3 +1,4 @@
 node_modules/
+cloudflare/seed.sql
 diagnostics/
 dashboard.png

@@ -18,9 +18,11 @@ The dashboard draws route-level history without third-party chart libraries. Old
 
 ## Collection behavior
 
-GitHub asks for a run every five minutes. A Peru-time gate permits live reads from 06:00 through 21:55, then resumes at 06:00 the following Peru day. Collection pauses for the rest of a day only after every route on both monitored visit dates has reached zero. A new Peru day always resumes collection.
+Cloudflare asks the Worker to run every five minutes. A Peru-time gate permits live reads from 06:00 through 21:55, then resumes at 06:00 the following Peru day. Collection pauses for the rest of a day only after every route on both monitored visit dates has reached zero. A new Peru day always resumes collection.
 
-GitHub Actions schedules are best-effort and may be delayed or skipped; the tracker never invents missing five-minute samples. If exact five-minute cadence is essential, run `node collect.mjs` from an always-on scheduler instead of relying on GitHub's shared scheduler.
+Route observations are stored in a Cloudflare D1 database. The public dashboard requests only one visit date at a time, keeping the download small as the history grows. The old GitHub collector remains enabled temporarily as a comparison and rollback path; it can be disabled after a full day of matching results.
+
+The separate same-day ticket-desk counter currently rejects Cloudflare requests with HTTP 530. This does not affect the six route counts or their graphs. Cloudflare records the warning and continues saving valid route availability.
 
 Collection stops after December 31, 2026. Disable the workflow after that date to stop the remaining lightweight gate runs.
 
@@ -40,9 +42,19 @@ npm run collect
 
 `node collect.mjs --gate` checks the time window and daily stop state without accessing the source. A live collection uses only Node's built-in `fetch` and `crypto`; no dependencies or browser installation are required.
 
+## Cloudflare
+
+The Worker source is in `cloudflare/worker.mjs`, its database migration is in `cloudflare/migrations/`, and `wrangler.jsonc` contains the five-minute schedule and D1 binding. The read-only endpoints are:
+
+- `/api/health`
+- `/api/data?visitDate=YYYY-MM-DD`
+- `/api/observations.csv?visitDate=YYYY-MM-DD`
+
+`/api/collect` is a protected maintenance endpoint and requires the `ADMIN_TOKEN` Worker secret.
+
 ## GitHub Pages
 
-The `Publish ticket dashboard` workflow deploys `docs/` using GitHub's official Pages actions. In repository settings, set **Pages → Build and deployment → Source** to **GitHub Actions** once if Pages has not previously been enabled.
+GitHub Pages still hosts the dashboard, while Cloudflare now supplies its live data. The `Publish ticket dashboard` workflow deploys `docs/` using GitHub's official Pages actions.
 
 ## Interpretation limits
 

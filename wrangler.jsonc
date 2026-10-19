@@ -1,0 +1,22 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "machu-picchu-ticket-pulse",
+  "main": "cloudflare/worker.mjs",
+  "compatibility_date": "2026-10-19",
+  "compatibility_flags": ["nodejs_compat"],
+  "triggers": {
+    "crons": ["*/5 * * * *"]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "machu-picchu-ticket-pulse",
+      "database_id": "69c5cc52-88c2-4c52-a090-ddb42f6e607d",
+      "migrations_dir": "cloudflare/migrations"
+    }
+  ],
+  "observability": {
+    "enabled": true
+  }
+}
+
