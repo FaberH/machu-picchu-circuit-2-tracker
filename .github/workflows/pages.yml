@@ -4,6 +4,11 @@ on:
     branches: [main]
     paths: ['docs/**', '.github/workflows/pages.yml']
   workflow_dispatch:
+  # Commits made with GITHUB_TOKEN do not start another workflow. Listen to the
+  # collector itself so every saved observation is published automatically.
+  workflow_run:
+    workflows: ['Collect Machu Picchu tickets']
+    types: [completed]
 permissions:
   contents: read
   pages: write
