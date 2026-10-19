@@ -2,7 +2,7 @@
 
 [Open dashboard](docs/index.html) · [Official availability page](https://tuboleto.cultura.pe/disponibilidad/llaqta_machupicchu)
 
-Latest check: 2026-10-19T17:11:34.074Z — ok
+Latest check: 2026-10-19T17:14:38.145Z — ok
 
 Times in the history are UTC; collection days use Peru time.
 
@@ -30,7 +30,7 @@ Ticket desk: **0 remaining** of 1000
 | 3-A | 50 | 18 | 32 |
 | 3-B | 100 | 26 | 74 |
 
-Valid observations: 6. Errors: 0.
+Valid observations: 7. Errors: 0.
 
 The first zero is an observation, not an exact sell-out time. No purchase probability is implied.
 Collection pauses for the Peru day only when every monitored route on both upcoming visit dates is sold out.
