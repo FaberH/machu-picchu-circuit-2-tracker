@@ -38,7 +38,7 @@ jobs:
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add data docs/data.json REPORT.md
+          git add data docs/data.json docs/observations.csv REPORT.md
           if ! git diff --cached --quiet; then
             git commit -m 'Record ticket observation'
             git pull --rebase origin main
