@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Independent history of public Machu Picchu ticket availability.">
+  <title>Machu Picchu ticket pulse</title>
+  <link rel="stylesheet" href="styles.css">
+  <script type="module" src="app.js"></script>
+</head>
+<body>
+  <header class="hero">
+    <nav>
+      <a class="brand" href="./" aria-label="Ticket pulse home">
+        <span class="brand-mark" aria-hidden="true">MP</span>
+        <span>Ticket pulse</span>
+      </a>
+      <a class="source-link" href="https://tuboleto.cultura.pe/disponibilidad/llaqta_machupicchu">Official source ↗</a>
+    </nav>
+    <div class="hero-copy">
+      <p class="eyebrow">Independent public-data tracker</p>
+      <h1>See Machu Picchu tickets disappear in real time.</h1>
+      <p class="lede">Availability is sampled every five minutes after the 06:00 Peru sales opening, with the real observation time preserved.</p>
+    </div>
+    <div id="status" class="status" role="status">Loading the latest observation…</div>
+  </header>
+
+  <main>
+    <section class="summary" aria-labelledby="summary-title">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">Latest snapshot</p>
+          <h2 id="summary-title">Tickets by route</h2>
+        </div>
+        <label class="select-label">Visit date
+          <select id="visit-date"></select>
+        </label>
+      </div>
+      <div id="desk" class="desk-card" hidden></div>
+      <div id="route-cards" class="route-grid"></div>
+    </section>
+
+    <section class="chart-section" aria-labelledby="chart-title">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">Tickets over time</p>
+          <h2 id="chart-title">Remaining inventory</h2>
+        </div>
+        <p id="sample-count" class="quiet"></p>
+      </div>
+      <div id="route-filters" class="filters" aria-label="Routes shown in chart"></div>
+      <div class="chart-shell">
+        <svg id="chart" role="img" aria-labelledby="chart-title chart-description" viewBox="0 0 960 440"></svg>
+        <p id="chart-description" class="sr-only"></p>
+        <div id="empty-chart" class="empty" hidden>More than one sample is needed to draw a trend.</div>
+      </div>
+      <p class="caption">Times use Peru time. A line between samples is only a visual guide; it does not prove when sales occurred.</p>
+    </section>
+
+    <section class="table-section" aria-labelledby="history-title">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">Audit trail</p>
+          <h2 id="history-title">Recent samples</h2>
+        </div>
+        <a href="observations.csv" download>Download CSV</a>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Observed</th><th>Route</th><th>Capacity</th><th>Sold</th><th>Remaining</th></tr></thead>
+          <tbody id="history-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <aside class="note">
+      <strong>Read this as a signal, not a guarantee.</strong>
+      Counts come from the public Ministry of Culture availability service. A displayed ticket may be taken before checkout, and missing samples mean the scheduler did not run—not that inventory stayed flat.
+    </aside>
+  </main>
+
+  <footer>
+    <span>Independent tracker · not affiliated with Peru’s Ministry of Culture</span>
+    <a href="https://github.com/FaberH/machu-picchu-circuit-2-tracker/blob/main/REPORT.md">Technical report</a>
+  </footer>
+</body>
+</html>
+

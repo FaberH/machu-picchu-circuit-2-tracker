@@ -1,33 +1,50 @@
-# Machu Picchu Circuit 2 tracker
+# Machu Picchu ticket pulse
 
-[Latest results](REPORT.md) · [Download CSV](data/observations.csv) · [Full history](data/observations.jsonl) · [Collection runs](../../actions)
+An independent public-data tracker and historical dashboard for the Ministry of Culture's [Machu Picchu availability page](https://tuboleto.cultura.pe/disponibilidad/llaqta_machupicchu).
 
-Tracks public in-person ticket availability for routes 2-A and 2-B at https://tuboleto.cultura.pe/cusco/1000boletos . Runs on GitHub independently of any laptop, without an AI subscription or ticket account.
+[Open dashboard](https://faberh.github.io/machu-picchu-circuit-2-tracker/) · [Latest text report](REPORT.md) · [CSV history](data/observations.csv) · [JSONL history](data/observations.jsonl)
 
-## Schedule
+## What it records
 
-GitHub starts a job every five minutes. A Peru-time gate performs live reads from 05:30 through 21:55, including exactly 06:00 when sales open, and skips the website outside that window. GitHub can delay or drop scheduled runs, so actual observation timestamps are saved. Pre-opening readings are tagged separately; zeros before 06:00 never pause collection. Once both routes are confirmed at zero during sales, subsequent jobs skip the website for the rest of the Peru day. Collection resumes the following morning. A second page load confirms all-zero counts. Stale dates and errors never trigger the pause. Restocks after the daily pause are unobserved.
+Every scheduled run after 06:00 Peru time reads the same public JSON service used by the official page. It records:
 
-Collection stops contacting the source after December 31, 2026. Disable the workflow in Actions afterward to stop lightweight scheduled jobs. GitHub may disable schedules after 60 days without repository activity; inspect Actions periodically.
+- remaining, sold, and capacity for all six routes;
+- both upcoming visit dates displayed by the official page;
+- same-day ticket-desk turns issued and remaining;
+- the actual UTC observation time and Peru collection date;
+- explicit error observations instead of silently treating failures as zero.
 
-## Results
+The dashboard draws route-level history without third-party chart libraries. Old Circuit 2 observations remain readable and appear alongside the new six-route data.
 
-REPORT.md shows the latest valid counts and collection status. CSV and JSONL contain UTC observation time, Peru collection date, displayed visit date, route capacity, sold and remaining counts. Raw page text is retained under data/raw. Filter status to ok for analysis; failed reads are never treated as zero.
+## Collection behavior
 
-A first observation at zero does not identify the sell-out time. Route totals do not guarantee queue access, a shared entry time or purchase success. Forecasts need validated history and sufficient coverage.
+GitHub asks for a run every five minutes. A Peru-time gate permits live reads from 06:00 through 21:55, then resumes at 06:00 the following Peru day. Collection pauses for the rest of a day only after every route on both monitored visit dates has reached zero. A new Peru day always resumes collection.
 
-## Run and test
+GitHub Actions schedules are best-effort and may be delayed or skipped; the tracker never invents missing five-minute samples. If exact five-minute cadence is essential, run `node collect.mjs` from an always-on scheduler instead of relying on GitHub's shared scheduler.
 
-Requires Node 22. Install with npm ci, run tests with npm test, install Chromium with npx playwright install chromium, then collect with npm run collect. The same daily stop and time-window rules apply locally.
+Collection stops after December 31, 2026. Disable the workflow after that date to stop the remaining lightweight gate runs.
 
-To trigger a cloud check: Actions > Collect Circuit 2 tickets > Run workflow. The workflow uses the repository-scoped GitHub token to commit public observations. No secrets are required.
+## Why the collector no longer uses a browser
 
-## If collection fails
+The official page loads availability from a public API. The request uses the API's server timestamp and an HMAC-SHA256 signature whose key and algorithm are shipped in the public front-end bundle. The collector reproduces that public read only; it does not log in, solve a captcha, reserve tickets, or call purchase endpoints. Direct collection is faster and less sensitive to visual redesigns than parsing rendered text.
 
-Open the failed run in Actions. Named steps separate setup, tests, reading tickets and saving data. Collection errors identify their stage and original cause. Download the collection-diagnostics artifact from the run summary within seven days: it includes diagnostics/collection.json, network/browser errors, the last parsing error, page text, HTML and a screenshot where available. A browser-launch failure cannot provide a page screenshot. If saving to GitHub fails, the artifact retains collected data.
+## Local verification
 
-The 13 tests include simulated network errors, HTTP failures, missing route cards, malformed layouts, loading placeholders, unstable counts, conflicting zero confirmations and evidence-capture failures, alongside date and stop rules.
+Use Node 22:
 
-For a controlled test, select the diagnostic_drill checkbox under Run workflow. This loads an offline broken-page fixture, saves evidence under diagnostic-drill/ and intentionally fails. It never contacts the ticket website or commits fake ticket readings. Scheduled runs keep this option off.
+```sh
+npm test
+npm run build:site
+npm run collect
+```
 
-A job GitHub never starts has no logs or screenshot: inspect missing scheduled runs separately. Tests and diagnostics help locate failures, but cannot guarantee the root cause of every upstream outage.
+`node collect.mjs --gate` checks the time window and daily stop state without accessing the source. A live collection uses only Node's built-in `fetch` and `crypto`; no dependencies or browser installation are required.
+
+## GitHub Pages
+
+The `Publish ticket dashboard` workflow deploys `docs/` using GitHub's official Pages actions. In repository settings, set **Pages → Build and deployment → Source** to **GitHub Actions** once if Pages has not previously been enabled.
+
+## Interpretation limits
+
+A first zero only proves that the route was sold out at that sample; it cannot reveal the exact sell-out second. Counts do not guarantee that a ticket remains available through checkout. Lines between samples are visual guides. Missing timestamps indicate missing runs, not unchanged inventory. This project is not affiliated with Peru's Ministry of Culture.
+

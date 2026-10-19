@@ -1,84 +1,130 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {parse,peru,gate,classify,readLoaded,readConfirmed,captureFailure} from './core.mjs';
-const raw='Disponibilidad para el día\n17/10/2026\nRuta 2-A: Clásico Diseñada\n600\nAFORO\n467\nVENDIDOS\n133\nDISPONIBLES\nRuta 2-B: Terraza Inferior\n100\nAFORO\n57\nVENDIDOS\n43\nDISPONIBLES';
-const zero={visitDate:'2026-10-17',routes:[{route:'2-A',capacity:600,sold:600,available:0},{route:'2-B',capacity:100,sold:100,available:0}]};
-test('parses distinct route counts and rejects broken data',()=>{
- assert.deepEqual(parse(raw).routes.map(r=>r.available),[133,43]);
- for(const invalid of ['Cargando...',raw.replace('133','134'),raw.replace('17/10','31/02'),raw.split('Ruta 2-B')[0],raw+'\n'+raw]) assert.throws(()=>parse(invalid));
-});
-test('Peru day differs from UTC around midnight',()=>assert.deepEqual(peru('2026-10-17T02:00:00Z'),{date:'2026-10-16',hour:21}));
-test('stops only confirmed both-zero today and resumes next day',()=>{
- const history=[{...zero,observedAt:'2026-10-16T18:00:00Z',status:'ok',stopForDay:true}];
- assert.match(gate(history,'2026-10-16T19:00:00Z'),/sold out/);
- assert.equal(gate(history,'2026-10-17T11:00:00Z'),null);
- assert.match(gate([],'2026-10-17T10:29:00Z'),/Outside/);
- assert.equal(gate([],'2026-10-17T10:30:00Z'),null);
- assert.equal(gate([{...history[0],status:'error'}],'2026-10-16T19:00:00Z'),null);
- assert.equal(classify(parse(raw),[],'2026-10-16T19:00:00Z').stopForDay,false);
-});
-test('pre-opening zeros cannot pause collection before sales begin',()=>{
- const before=classify(zero,[],'2026-10-16T10:55:00Z');
- assert.equal(before.phase,'preopen');
- assert.equal(before.stopForDay,false);
- assert.equal(gate([{...zero,...before,observedAt:'2026-10-16T10:55:00Z'}],'2026-10-16T11:00:00Z'),null);
- assert.equal(classify(zero,[],'2026-10-16T11:00:00Z').stopForDay,true);
-});
-test('stale prior inventory cannot stop a new day',()=>{
- const future={...zero,visitDate:'2026-10-18'};
- const history=[{...future,observedAt:'2026-10-16T18:00:00Z',status:'ok'}];
- assert.equal(classify(future,history,'2026-10-17T11:00:00Z').status,'stale');
- assert.equal(classify(future,[],'2026-10-17T11:00:00Z').stopForDay,true);
- assert.match(gate([],'2027-01-01T11:00:00Z'),/complete/);
+import {
+  addDays,
+  classify,
+  collectSnapshot,
+  fetchRoutes,
+  flattenObservation,
+  gate,
+  isSoldOut,
+  normalizeRoutes,
+  peru,
+  signTimestamp,
+  visitDatesFor,
+} from './core.mjs';
+
+const apiRows = [
+  {nidRuta: 7, circuito: 'Circuito 1 - Panorámico', ruta: 'Ruta 1-A: Montaña Machupicchu', ncupo: 50, ncupoActual: 49},
+  {nidRuta: 8, circuito: 'Circuito 1 - Panorámico', ruta: 'Ruta 1-B: Terraza superior', ncupo: 100, ncupoActual: 95},
+  {nidRuta: 11, circuito: 'Circuito 2 - Circuito clásico', ruta: 'Ruta 2-A: Clásico Diseñada', ncupo: 600, ncupoActual: 144},
+  {nidRuta: 12, circuito: 'Circuito 2 - Circuito clásico', ruta: 'Ruta 2-B: Terraza Inferior', ncupo: 100, ncupoActual: 28},
+  {nidRuta: 13, circuito: 'Circuito 3 - Machupicchu realeza', ruta: 'Ruta 3-A: Montaña Waynapicchu', ncupo: 50, ncupoActual: 32},
+  {nidRuta: 14, circuito: 'Circuito 3 - Machupicchu realeza', ruta: 'Ruta 3-B: Realeza diseñada', ncupo: 100, ncupoActual: 74},
+];
+
+const jsonResponse = (payload, status = 200) => ({
+  ok: status >= 200 && status < 300,
+  status,
+  json: async () => payload,
 });
 
-function fakePage(texts,{http=200,navigationError,routeError}={}) {
- let index=0;
- return {
-  goto:async()=>{if(navigationError)throw navigationError;return {status:()=>http};},
-  getByText:()=>({first:()=>({waitFor:async()=>{if(routeError)throw routeError;}})}),
-  locator:()=>({innerText:async()=>texts[Math.min(index++,texts.length-1)]}),
-  waitForTimeout:async()=>{},
- };
-}
-const quick={samples:3,pollMs:0,timeoutMs:10};
-test('network and HTTP failures identify navigation stage',async()=>{
- for(const options of [{http:503},{navigationError:new Error('net::ERR_NAME_NOT_RESOLVED')}]) {
-  const d={};await assert.rejects(readLoaded(fakePage([raw],options),d,quick),/503|ERR_NAME/);
-  assert.equal(d.stage,'navigation');
- }
+test('Peru date and two monitored visit dates are stable around UTC midnight', () => {
+  assert.deepEqual(peru('2026-10-17T02:07:00Z'), {date: '2026-10-16', hour: 21, minute: 7});
+  assert.equal(addDays('2026-12-31', 1), '2027-01-01');
+  assert.deepEqual(visitDatesFor('2026-10-19'), ['2026-10-20', '2026-10-21']);
 });
-test('missing route identifies route-card wait stage',async()=>{
- const d={};await assert.rejects(readLoaded(fakePage([raw],{routeError:new Error('Timeout waiting for Ruta 2-B')}),d,quick),/Ruta 2-B/);
- assert.equal(d.stage,'waiting-for-route-cards');
+
+test('public request signing matches the observed website request', () => {
+  assert.equal(signTimestamp('1792428932364'), 'z6z2WkuJUGUFx1+5vje3Mm/CupMGBdSJZg7Hrs65SFU=');
 });
-test('layout errors preserve the original parser diagnosis and page text',async()=>{
- const broken=raw.replace('43','44');const d={};
- await assert.rejects(readLoaded(fakePage([broken]),d,quick),/Invalid totals 2-B/);
- assert.equal(d.stage,'parsing-route-cards');assert.equal(d.lastParseError,'Invalid totals 2-B');assert.equal(d.raw,broken);
+
+test('normalizes all routes and derives sold counts', () => {
+  const routes = normalizeRoutes(apiRows);
+  assert.equal(routes.length, 6);
+  assert.deepEqual(routes.find(route => route.route === '2-A'), {
+    id: 11,
+    route: '2-A',
+    name: 'Ruta 2-A: Clásico Diseñada',
+    circuit: 'Circuito 2 - Circuito clásico',
+    capacity: 600,
+    sold: 456,
+    available: 144,
+  });
 });
-test('loading placeholders cannot become valid observations',async()=>{
- const d={};await assert.rejects(readLoaded(fakePage(['Cargando...']),d,quick),/Visit date missing/);
- assert.equal(d.lastParsed,undefined);
+
+test('rejects empty, duplicate, and impossible inventory', () => {
+  assert.throws(() => normalizeRoutes([]), /no routes/);
+  assert.throws(() => normalizeRoutes([...apiRows, apiRows[0]]), /duplicate/);
+  assert.throws(() => normalizeRoutes([{...apiRows[0], ncupoActual: 51}]), /invalid totals/);
 });
-test('changing counts must stabilize before recording',async()=>{
- const changed=raw.replace('467','468').replace('133','132');const d={};
- assert.equal((await readLoaded(fakePage([raw,changed,changed]),d,quick)).routes[0].available,132);
- assert.equal(d.samples,3);
+
+test('fetches server time then signs a public availability request', async () => {
+  const calls = [];
+  const fakeFetch = async (url, options = {}) => {
+    calls.push({url, options});
+    if (url.endsWith('/tiempo-servidor')) return jsonResponse({tiempoServidor: 1792428932364});
+    return jsonResponse(apiRows);
+  };
+  const routes = await fetchRoutes('2026-10-21', fakeFetch);
+  const body = JSON.parse(calls[1].options.body);
+  assert.equal(routes[2].available, 144);
+  assert.deepEqual(body, {
+    lugar: 'llaqta_machupicchu',
+    fecha: '2026-10-21',
+    punto: 5,
+    code: 'z6z2WkuJUGUFx1+5vje3Mm/CupMGBdSJZg7Hrs65SFU=',
+    timestamp: '1792428932364',
+  });
 });
-test('zero changed after reload never confirms sell-out',async()=>{
- const zeroText=raw.replace('467','600').replace('133','0').replace('57','100').replace('43','0');const d={};
- await assert.rejects(readConfirmed(fakePage([zeroText,zeroText,raw,raw]),d,quick),/changed after reload/);
- assert.equal(d.stage,'confirming-sold-out');
+
+test('collects ticket-desk and both upcoming visit dates', async () => {
+  const fakeFetch = async url => {
+    if (url.includes('tickets-por-fecha')) return jsonResponse({code: 200, totalticket: 580, message: 'ok'});
+    if (url.endsWith('/tiempo-servidor')) return jsonResponse({tiempoServidor: 1792428932364});
+    return jsonResponse(apiRows);
+  };
+  const snapshot = await collectSnapshot('2026-10-19T16:00:00Z', fakeFetch);
+  assert.deepEqual(snapshot.ticketDesk, {capacity: 1000, issued: 580, available: 420});
+  assert.deepEqual(snapshot.visitDates.map(day => day.visitDate), ['2026-10-20', '2026-10-21']);
+  assert.equal(snapshot.visitDates.every(day => day.routes.length === 6), true);
 });
-test('failure evidence survives a screenshot error',async()=>{
- const writes={};const d={stage:'parsing-route-cards',error:{message:'original error'}};
- const page={locator:()=>({innerText:async()=>raw}),content:async()=>'<html>failed layout</html>',screenshot:async()=>{throw new Error('Screenshot unavailable');}};
- await captureFailure(page,d,(name,value)=>{writes[name]=value;});
- assert.equal(writes['page.txt'],raw);assert.equal(writes['page.html'],'<html>failed layout</html>');
- assert.equal(d.evidenceErrors[0].error,'Screenshot unavailable');assert.equal(d.error.message,'original error');
+
+test('collection begins at 06:00 Peru and stops only after every route is zero', () => {
+  assert.match(gate([], '2026-10-19T10:59:00Z'), /Outside/);
+  assert.equal(gate([], '2026-10-19T11:00:00Z'), null);
+  const zeroRows = normalizeRoutes(apiRows.map(row => ({...row, ncupoActual: 0})));
+  const zero = {visitDates: [
+    {visitDate: '2026-10-20', routes: zeroRows},
+    {visitDate: '2026-10-21', routes: zeroRows},
+  ]};
+  assert.equal(isSoldOut(zero), true);
+  assert.equal(classify(zero, '2026-10-19T11:00:00Z').stopForDay, true);
+  const partial = structuredClone(zero);
+  partial.visitDates[1].routes[0].available = 1;
+  assert.equal(isSoldOut(partial), false);
+  assert.equal(classify(partial, '2026-10-19T11:00:00Z').stopForDay, false);
+  const history = [{...zero, schemaVersion: 2, observedAt: '2026-10-19T12:00:00Z', status: 'ok', stopForDay: true}];
+  assert.match(gate(history, '2026-10-19T12:05:00Z'), /sold out/);
+  assert.equal(gate(history, '2026-10-20T11:00:00Z'), null);
+  assert.equal(gate([{...history[0], schemaVersion: undefined}], '2026-10-19T12:05:00Z'), null);
 });
-test('browser launch failures safely omit page evidence',async()=>{
- const d={};await captureFailure(undefined,d,()=>assert.fail('No page to save'));
- assert.deepEqual(d.evidenceErrors,[]);
+
+test('API failures and invalid server time are never converted to zero', async () => {
+  await assert.rejects(fetchRoutes('2026-10-21', async () => jsonResponse({}, 503)), /HTTP 503/);
+  await assert.rejects(fetchRoutes('2026-10-21', async () => jsonResponse({tiempoServidor: 'bad'})), /server time response is invalid/i);
 });
+
+test('flattens new and legacy observations for CSV and graphs', () => {
+  const modern = {
+    observedAt: '2026-10-19T16:00:00Z', collectionDate: '2026-10-19', status: 'ok',
+    visitDates: [{visitDate: '2026-10-21', routes: normalizeRoutes(apiRows)}],
+  };
+  const legacy = {
+    observedAt: '2026-10-18T16:00:00Z', collectionDate: '2026-10-18', status: 'ok', visitDate: '2026-10-19',
+    routes: [{route: '2-A', capacity: 600, sold: 500, available: 100}],
+  };
+  assert.equal(flattenObservation(modern).length, 6);
+  assert.equal(flattenObservation(legacy)[0].visitDate, '2026-10-19');
+});
+

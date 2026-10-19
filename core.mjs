@@ -1,87 +1,182 @@
-export const SOURCE = 'https://tuboleto.cultura.pe/cusco/1000boletos';
+import {createHmac} from 'node:crypto';
+
+export const SOURCE = 'https://tuboleto.cultura.pe/disponibilidad/llaqta_machupicchu';
+export const API_BASE = 'https://api-tuboleto.cultura.pe';
+export const PLACE = 'llaqta_machupicchu';
+export const SALES_POINT = 5;
+export const DAILY_CAPACITY = 1000;
+
+// This value is shipped in the public web application and is used only to sign
+// public availability reads. It is not a private repository credential.
+export const PUBLIC_REQUEST_KEY = '5t4jPtv4LpmGgWU7ZYk8FhZf5LNTpk';
+const PUBLIC_HEADERS = {
+  Accept: 'application/json, text/plain, */*',
+  'Accept-Language': 'es-PE,es;q=0.9',
+  Origin: 'https://tuboleto.cultura.pe',
+  Referer: 'https://tuboleto.cultura.pe/',
+  'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0 Safari/537.36',
+};
+
 export function peru(instant) {
-  const parts = Object.fromEntries(new Intl.DateTimeFormat('en-CA', {timeZone:'America/Lima',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',hourCycle:'h23'}).formatToParts(new Date(instant)).map(p=>[p.type,p.value]));
-  return {date:`${parts.year}-${parts.month}-${parts.day}`,hour:Number(parts.hour)};
+  const parts = Object.fromEntries(new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Lima',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(new Date(instant)).map(part => [part.type, part.value]));
+  return {
+    date: `${parts.year}-${parts.month}-${parts.day}`,
+    hour: Number(parts.hour),
+    minute: Number(parts.minute),
+  };
 }
-export function parse(text) {
-  const normalized = text.normalize('NFC').replace(/\r/g,'');
-  const date = normalized.match(/Disponibilidad para el d[ií]a\s*(\d{2})\/(\d{2})\/(\d{4})/i);
-  if (!date) throw new Error('Visit date missing');
-  const visitDate = `${date[3]}-${date[2]}-${date[1]}`;
-  if (new Date(visitDate).toISOString().slice(0,10)!==visitDate) throw new Error('Invalid visit date');
-  const routes = ['2-A','2-B'].map(route=>{
-    const matches=[...normalized.matchAll(new RegExp(`Ruta ${route}:[^\\n]*\\s+(\\d+)\\s+AFORO\\s+(\\d+)\\s+VENDIDOS\\s+(\\d+)\\s+DISPONIBLES`,'gi'))];
-    if(matches.length!==1) throw new Error(`Missing or ambiguous ${route}`);
-    const [capacity,sold,available]=matches[0].slice(1).map(Number);
-    if(![capacity,sold,available].every(Number.isSafeInteger)||capacity<=0||sold+available!==capacity) throw new Error(`Invalid totals ${route}`);
-    return {route,capacity,sold,available};
+
+export function addDays(date, days) {
+  const value = new Date(`${date}T12:00:00Z`);
+  value.setUTCDate(value.getUTCDate() + days);
+  return value.toISOString().slice(0, 10);
+}
+
+export function visitDatesFor(collectionDate) {
+  return [addDays(collectionDate, 1), addDays(collectionDate, 2)];
+}
+
+export function signTimestamp(timestamp, key = PUBLIC_REQUEST_KEY) {
+  return createHmac('sha256', key).update(`${key}:${timestamp}`).digest('base64');
+}
+
+async function expectJson(response, label) {
+  if (!response?.ok) throw new Error(`${label} returned HTTP ${response?.status ?? 'unknown'}`);
+  try {
+    return await response.json();
+  } catch (error) {
+    throw new Error(`${label} returned invalid JSON: ${error.message}`);
+  }
+}
+
+export function normalizeRoutes(rows) {
+  if (!Array.isArray(rows) || rows.length === 0) throw new Error('Availability response has no routes');
+  const routes = rows.map(row => {
+    const capacity = Number(row.ncupo);
+    const available = Number(row.ncupoActual);
+    const id = Number(row.nidRuta);
+    const name = String(row.ruta ?? '').trim();
+    const route = name.match(/Ruta\s+([0-9]+-[A-Z])/i)?.[1]?.toUpperCase();
+    if (!route || !name || !Number.isSafeInteger(id) || id <= 0) throw new Error('Availability response contains an invalid route identity');
+    if (!Number.isSafeInteger(capacity) || !Number.isSafeInteger(available) || capacity <= 0 || available < 0 || available > capacity) {
+      throw new Error(`Availability response contains invalid totals for ${route}`);
+    }
+    return {
+      id,
+      route,
+      name,
+      circuit: String(row.circuito ?? '').trim(),
+      capacity,
+      sold: capacity - available,
+      available,
+    };
   });
-  return {visitDate,routes};
+  if (new Set(routes.map(route => route.id)).size !== routes.length || new Set(routes.map(route => route.route)).size !== routes.length) {
+    throw new Error('Availability response contains duplicate routes');
+  }
+  return routes.sort((a, b) => a.route.localeCompare(b.route));
 }
-export const isZero = s => s.routes.every(r=>r.available===0);
+
+export async function fetchServerTimestamp(fetchImpl = fetch) {
+  const response = await fetchImpl(`${API_BASE}/comunes/tiempo-servidor`, {
+    headers: PUBLIC_HEADERS,
+  });
+  const payload = await expectJson(response, 'Server time');
+  const timestamp = String(payload.tiempoServidor ?? '');
+  if (!/^\d{13}$/.test(timestamp)) throw new Error('Server time response is invalid');
+  return timestamp;
+}
+
+export async function fetchRoutes(visitDate, fetchImpl = fetch) {
+  const timestamp = await fetchServerTimestamp(fetchImpl);
+  const response = await fetchImpl(`${API_BASE}/comunes/disponibilidad-actual`, {
+    method: 'POST',
+    headers: {
+      ...PUBLIC_HEADERS,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      lugar: PLACE,
+      fecha: visitDate,
+      punto: SALES_POINT,
+      code: signTimestamp(timestamp),
+      timestamp,
+    }),
+  });
+  return normalizeRoutes(await expectJson(response, `Availability for ${visitDate}`));
+}
+
+export async function fetchTicketDesk(collectionDate, fetchImpl = fetch) {
+  const response = await fetchImpl(`${API_BASE}/recaudador/ticket/tickets-por-fecha/${collectionDate}`, {
+    headers: PUBLIC_HEADERS,
+  });
+  const payload = await expectJson(response, 'Ticket desk total');
+  const issued = Number(payload.totalticket);
+  if (!Number.isSafeInteger(issued) || issued < 0 || issued > DAILY_CAPACITY) throw new Error('Ticket desk total is invalid');
+  return {capacity: DAILY_CAPACITY, issued, available: DAILY_CAPACITY - issued};
+}
+
+export async function collectSnapshot(now = new Date(), fetchImpl = fetch) {
+  const collectionDate = peru(now).date;
+  const dates = visitDatesFor(collectionDate);
+  const [ticketDesk, ...routeSets] = await Promise.all([
+    fetchTicketDesk(collectionDate, fetchImpl),
+    ...dates.map(date => fetchRoutes(date, fetchImpl)),
+  ]);
+  return {
+    collectionDate,
+    ticketDesk,
+    visitDates: dates.map((visitDate, index) => ({visitDate, routes: routeSets[index]})),
+  };
+}
+
+export function isSoldOut(snapshot) {
+  const routes = snapshot.visitDates?.flatMap(day => day.routes ?? []) ?? [];
+  return routes.length > 0 && routes.every(route => route.available === 0);
+}
+
 export function gate(history, now) {
-  const {date,hour}=peru(now);
-  if(date>'2026-12-31') return 'Collection period complete';
-  if(hour<5||(hour===5&&new Date(now).getUTCMinutes()<30)||hour>=22) return 'Outside 05:30–22:00 Peru collection window';
-  if(history.some(s=>s.status==='ok'&&s.stopForDay&&peru(s.observedAt).date===date)) return 'Both routes sold out today';
+  const current = peru(now);
+  if (current.date > '2026-12-31') return 'Collection period complete';
+  if (current.hour < 6 || current.hour >= 22) return 'Outside 06:00–22:00 Peru collection window';
+  if (history.some(item => item.schemaVersion >= 2 && item.status === 'ok' && item.stopForDay && peru(item.observedAt).date === current.date)) {
+    return 'All monitored visit dates are sold out today';
+  }
   return null;
 }
-export function classify(snapshot, history, now) {
-  const today=peru(now).date;
-  if(snapshot.visitDate<=today) return {status:'stale',stopForDay:false,reason:'Visit date is not in the future'};
-  const priorZero=history.some(s=>s.status==='ok'&&s.visitDate===snapshot.visitDate&&isZero(s)&&peru(s.observedAt).date<today);
-  if(isZero(snapshot)&&priorZero) return {status:'stale',stopForDay:false,reason:'Previous collection day sold out this same visit date'};
-  return {status:'ok',phase:peru(now).hour<6?'preopen':'sales',stopForDay:peru(now).hour>=6&&isZero(snapshot)};
+
+export function classify(snapshot, now) {
+  return {
+    status: 'ok',
+    phase: peru(now).hour < 6 ? 'preopen' : 'sales',
+    stopForDay: peru(now).hour >= 6 && isSoldOut(snapshot),
+  };
 }
 
-// Kept separate from filesystem writes so failure paths can be tested offline.
-export async function readLoaded(page, diagnostics, {samples=15,pollMs=1000,timeoutMs=45000}={}) {
-  diagnostics.stage='navigation';
-  const response=await page.goto(SOURCE,{waitUntil:'domcontentloaded',timeout:timeoutMs});
-  diagnostics.httpStatus=response?.status()??null;
-  if(response && response.status()>=400) throw new Error(`Ticket page returned HTTP ${response.status()}`);
-  diagnostics.stage='waiting-for-route-cards';
-  await page.getByText('Ruta 2-B:',{exact:false}).first().waitFor({timeout:timeoutMs});
-  diagnostics.stage='parsing-route-cards';
-  let previous;
-  for(let i=0;i<samples;i++) {
-    diagnostics.raw=await page.locator('body').innerText();
-    diagnostics.samples=(diagnostics.samples||0)+1;
-    try {
-      const current=parse(diagnostics.raw);
-      diagnostics.lastParsed=current;
-      if(JSON.stringify(current)===JSON.stringify(previous)) return current;
-      previous=current;
-    } catch(error) {
-      diagnostics.lastParseError=error.message;
-      previous=undefined;
-    }
-    await page.waitForTimeout(pollMs);
+export function flattenObservation(observation) {
+  if (Array.isArray(observation.visitDates)) {
+    return observation.visitDates.flatMap(day => day.routes.map(route => ({
+      observedAt: observation.observedAt,
+      collectionDate: observation.collectionDate,
+      visitDate: day.visitDate,
+      status: observation.status,
+      ...route,
+    })));
   }
-  throw new Error(`No stable valid route reading after ${samples} samples. Last parsing error: ${diagnostics.lastParseError||'none; inventory kept changing'}`);
+  return (observation.routes ?? []).map(route => ({
+    observedAt: observation.observedAt,
+    collectionDate: observation.collectionDate ?? peru(observation.observedAt).date,
+    visitDate: observation.visitDate,
+    status: observation.status,
+    ...route,
+  }));
 }
 
-export async function readConfirmed(page, diagnostics, options) {
-  let snapshot=await readLoaded(page,diagnostics,options);
-  if(isZero(snapshot)) {
-    diagnostics.zeroBeforeReload=snapshot;
-    const confirmed=await readLoaded(page,diagnostics,options);
-    diagnostics.stage='confirming-sold-out';
-    if(JSON.stringify(snapshot)!==JSON.stringify(confirmed)) throw new Error('Sold-out reading changed after reload; retry next run');
-    snapshot=confirmed;
-  }
-  return snapshot;
-}
-
-export async function captureFailure(page, diagnostics, write) {
-  diagnostics.evidenceErrors=[];
-  if(!page) return;
-  for(const [name,read] of [
-    ['page.txt',()=>page.locator('body').innerText()],
-    ['page.html',()=>page.content()],
-    ['page.png',()=>page.screenshot({fullPage:true,timeout:10000})],
-  ]) {
-    try {const value=await read();write(name,value);if(name==='page.txt')diagnostics.raw=value;}
-    catch(error){diagnostics.evidenceErrors.push({file:name,error:error.message});}
-  }
-}

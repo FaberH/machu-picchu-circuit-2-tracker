@@ -1,16 +1,10 @@
-name: Collect Circuit 2 tickets
-run-name: ${{ inputs.diagnostic_drill && 'Diagnostic drill (expected failure)' || 'Circuit 2 collection' }}
+name: Collect Machu Picchu tickets
+run-name: Ticket availability collection
 on:
   schedule:
-    # GitHub schedules in UTC. Run every five minutes; the gate below limits
-    # live reads to 05:30–22:00 Peru and stops after a confirmed daily sell-out.
+    # GitHub schedules use UTC. The script gates reads to 06:00–22:00 Peru.
     - cron: '*/5 * * * *'
   workflow_dispatch:
-    inputs:
-      diagnostic_drill:
-        description: 'Offline failure drill: validates evidence upload; intentionally fails'
-        type: boolean
-        default: false
   push:
     branches: [main]
     paths: ['*.mjs', 'package*.json', '.github/workflows/collect.yml']
@@ -22,56 +16,36 @@ concurrency:
 jobs:
   collect:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 3
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v4
         with:
           ref: main
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: node --test test.mjs
-      - name: Check collection window and daily sell-out
+      - run: npm test
+      - name: Check Peru collection window and daily sell-out
         id: gate
-        env:
-          DRILL: ${{ inputs.diagnostic_drill }}
-        run: |
-          if [ "$DRILL" = "true" ]; then
-            echo 'collect=true' >> "$GITHUB_OUTPUT"
-          else
-            node collect.mjs --gate
-          fi
-      - if: steps.gate.outputs.collect == 'true'
-        run: npm ci
-      - if: steps.gate.outputs.collect == 'true'
-        run: npx playwright install --with-deps chromium
-      - name: Read live tickets
+        run: node collect.mjs --gate
+      - name: Read public ticket API
         if: steps.gate.outputs.collect == 'true'
-        id: scrape
+        id: collect
         continue-on-error: true
-        env:
-          DRILL: ${{ inputs.diagnostic_drill }}
-        run: |
-          if [ "$DRILL" = "true" ]; then
-            mkdir -p diagnostic-drill
-            cd diagnostic-drill
-            node ../collect.mjs --diagnostic-drill
-          else
-            node collect.mjs
-          fi
+        run: node collect.mjs
       - name: Preserve observations, including failed reads
-        if: always() && inputs.diagnostic_drill != true && (steps.scrape.outcome == 'success' || steps.scrape.outcome == 'failure')
+        if: always() && (steps.collect.outcome == 'success' || steps.collect.outcome == 'failure')
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add data REPORT.md
+          git add data docs/data.json REPORT.md
           if ! git diff --cached --quiet; then
             git commit -m 'Record ticket observation'
             git pull --rebase origin main
             git push origin HEAD:main
           fi
       - name: Upload failure evidence
-        if: always() && (failure() || steps.scrape.outcome == 'failure')
+        if: always() && steps.collect.outcome == 'failure'
         uses: actions/upload-artifact@v4
         with:
           name: collection-diagnostics-${{ github.run_id }}
@@ -79,9 +53,9 @@ jobs:
             diagnostics/
             data/
             REPORT.md
-            diagnostic-drill/
           retention-days: 7
           if-no-files-found: warn
-      - name: Report failed or stale collection
-        if: steps.scrape.outcome == 'failure'
+      - name: Report failed collection
+        if: steps.collect.outcome == 'failure'
         run: exit 1
+
