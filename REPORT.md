@@ -2,13 +2,13 @@
 
 [Open dashboard](docs/index.html) · [Official availability page](https://tuboleto.cultura.pe/disponibilidad/llaqta_machupicchu)
 
-Latest check: 2026-10-20T00:31:13.687Z — ok
+Latest check: 2026-10-20T14:38:40.270Z — ok
 
 Times in the history are UTC; collection days use Peru time.
 
 Ticket desk: **0 remaining** of 1000
 
-## Visit date 2026-10-20
+## Visit date 2026-10-21
 
 | Route | Capacity | Sold | Remaining |
 |---|---:|---:|---:|
@@ -19,18 +19,18 @@ Ticket desk: **0 remaining** of 1000
 | 3-A | 50 | 50 | 0 |
 | 3-B | 100 | 100 | 0 |
 
-## Visit date 2026-10-21
+## Visit date 2026-10-22
 
 | Route | Capacity | Sold | Remaining |
 |---|---:|---:|---:|
-| 1-A | 50 | 27 | 23 |
-| 1-B | 100 | 70 | 30 |
-| 2-A | 600 | 600 | 0 |
-| 2-B | 100 | 100 | 0 |
-| 3-A | 50 | 43 | 7 |
-| 3-B | 100 | 84 | 16 |
+| 1-A | 50 | 2 | 48 |
+| 1-B | 100 | 20 | 80 |
+| 2-A | 600 | 399 | 201 |
+| 2-B | 100 | 31 | 69 |
+| 3-A | 50 | 5 | 45 |
+| 3-B | 100 | 11 | 89 |
 
-Valid observations: 10. Errors: 0.
+Valid observations: 11. Errors: 0.
 
 The first zero is an observation, not an exact sell-out time. No purchase probability is implied.
 Collection pauses for the Peru day only when every monitored route on both upcoming visit dates is sold out.
