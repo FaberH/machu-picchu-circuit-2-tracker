@@ -1,9 +1,6 @@
 name: Collect Machu Picchu tickets
 run-name: Ticket availability collection
 on:
-  schedule:
-    # GitHub schedules use UTC. The script gates reads to 06:00–22:00 Peru.
-    - cron: '*/5 * * * *'
   workflow_dispatch:
   push:
     branches: [main]
