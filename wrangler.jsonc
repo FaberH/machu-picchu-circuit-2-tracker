@@ -5,7 +5,10 @@
   "compatibility_date": "2026-10-19",
   "compatibility_flags": ["nodejs_compat"],
   "triggers": {
-    "crons": ["*/5 * * * *"]
+    "crons": [
+      "* 11-12 * * *",
+      "*/5 0-2,13-23 * * *"
+    ]
   },
   "d1_databases": [
     {

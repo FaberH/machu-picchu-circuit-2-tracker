@@ -18,9 +18,9 @@ The dashboard draws route-level history without third-party chart libraries. Old
 
 ## Collection behavior
 
-Cloudflare asks the Worker to run every five minutes. A Peru-time gate permits live reads from 06:00 through 21:55, then resumes at 06:00 the following Peru day. Collection pauses for the rest of a day only after every route on both monitored visit dates has reached zero. A new Peru day always resumes collection.
+Cloudflare asks the Worker to run every minute from 06:00 through 07:59 Peru time, then every five minutes from 08:00 through 21:55. Collection pauses for the rest of a day only after every route on both monitored visit dates has reached zero. A new Peru day always resumes collection.
 
-Route observations are stored in a Cloudflare D1 database. The public dashboard requests only one visit date at a time, keeping the download small as the history grows. The old GitHub collector remains enabled temporarily as a comparison and rollback path; it can be disabled after a full day of matching results.
+Route observations are stored in a Cloudflare D1 database. The public dashboard requests only one visit date at a time, keeping the download small as the history grows. The old GitHub collector is disabled; GitHub now stores the code and hosts the dashboard, while Cloudflare performs the scheduled collection.
 
 The separate same-day ticket-desk counter currently rejects Cloudflare requests with HTTP 530. This does not affect the six route counts or their graphs. Cloudflare records the warning and continues saving valid route availability.
 
@@ -44,7 +44,7 @@ npm run collect
 
 ## Cloudflare
 
-The Worker source is in `cloudflare/worker.mjs`, its database migration is in `cloudflare/migrations/`, and `wrangler.jsonc` contains the five-minute schedule and D1 binding. The read-only endpoints are:
+The Worker source is in `cloudflare/worker.mjs`, its database migration is in `cloudflare/migrations/`, and `wrangler.jsonc` contains the one-minute/five-minute schedule and D1 binding. The read-only endpoints are:
 
 - `/api/health`
 - `/api/data?visitDate=YYYY-MM-DD`
