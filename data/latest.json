@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "observedAt": "2026-10-19T21:29:56.125Z",
+  "observedAt": "2026-10-20T00:31:13.687Z",
   "source": "https://tuboleto.cultura.pe/disponibilidad/llaqta_machupicchu",
   "collectionDate": "2026-10-19",
   "ticketDesk": {
@@ -78,8 +78,8 @@
           "name": "Ruta 1-A: Montaña Machupicchu",
           "circuit": "Circuito 1 - Panorámico",
           "capacity": 50,
-          "sold": 7,
-          "available": 43
+          "sold": 27,
+          "available": 23
         },
         {
           "id": 8,
@@ -87,8 +87,8 @@
           "name": "Ruta 1-B: Terraza superior",
           "circuit": "Circuito 1 - Panorámico",
           "capacity": 100,
-          "sold": 28,
-          "available": 72
+          "sold": 70,
+          "available": 30
         },
         {
           "id": 11,
@@ -114,8 +114,8 @@
           "name": "Ruta 3-A: Montaña Waynapicchu",
           "circuit": "Circuito 3 - Machupicchu realeza",
           "capacity": 50,
-          "sold": 30,
-          "available": 20
+          "sold": 43,
+          "available": 7
         },
         {
           "id": 14,
@@ -123,8 +123,8 @@
           "name": "Ruta 3-B: Realeza diseñada",
           "circuit": "Circuito 3 - Machupicchu realeza",
           "capacity": 100,
-          "sold": 63,
-          "available": 37
+          "sold": 84,
+          "available": 16
         }
       ]
     }
@@ -132,5 +132,5 @@
   "status": "ok",
   "phase": "sales",
   "stopForDay": false,
-  "rawFile": "data/raw/2026-10-19T21-29-56-125Z.json"
+  "rawFile": "data/raw/2026-10-20T00-31-13-687Z.json"
 }
