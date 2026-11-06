@@ -1,17 +1,17 @@
 {
   "schemaVersion": 2,
-  "observedAt": "2026-10-20T14:59:02.436Z",
+  "observedAt": "2026-11-06T15:20:41.186Z",
   "source": "https://tuboleto.cultura.pe/disponibilidad/llaqta_machupicchu",
-  "collectionDate": "2026-10-20",
+  "collectionDate": "2026-11-06",
   "ticketDesk": {
     "capacity": 1000,
-    "issued": 1000,
-    "available": 0
+    "issued": 287,
+    "available": 713
   },
   "warning": null,
   "visitDates": [
     {
-      "visitDate": "2026-10-21",
+      "visitDate": "2026-11-07",
       "routes": [
         {
           "id": 7,
@@ -19,8 +19,8 @@
           "name": "Ruta 1-A: Montaña Machupicchu",
           "circuit": "Circuito 1 - Panorámico",
           "capacity": 50,
-          "sold": 50,
-          "available": 0
+          "sold": 1,
+          "available": 49
         },
         {
           "id": 8,
@@ -28,8 +28,8 @@
           "name": "Ruta 1-B: Terraza superior",
           "circuit": "Circuito 1 - Panorámico",
           "capacity": 100,
-          "sold": 100,
-          "available": 0
+          "sold": 3,
+          "available": 97
         },
         {
           "id": 11,
@@ -37,8 +37,8 @@
           "name": "Ruta 2-A: Clásico Diseñada",
           "circuit": "Circuito 2 - Circuito clásico",
           "capacity": 600,
-          "sold": 600,
-          "available": 0
+          "sold": 238,
+          "available": 362
         },
         {
           "id": 12,
@@ -46,8 +46,8 @@
           "name": "Ruta 2-B: Terraza Inferior",
           "circuit": "Circuito 2 - Circuito clásico",
           "capacity": 100,
-          "sold": 100,
-          "available": 0
+          "sold": 29,
+          "available": 71
         },
         {
           "id": 13,
@@ -55,8 +55,8 @@
           "name": "Ruta 3-A: Montaña Waynapicchu",
           "circuit": "Circuito 3 - Machupicchu realeza",
           "capacity": 50,
-          "sold": 50,
-          "available": 0
+          "sold": 3,
+          "available": 47
         },
         {
           "id": 14,
@@ -64,13 +64,13 @@
           "name": "Ruta 3-B: Realeza diseñada",
           "circuit": "Circuito 3 - Machupicchu realeza",
           "capacity": 100,
-          "sold": 100,
-          "available": 0
+          "sold": 4,
+          "available": 96
         }
       ]
     },
     {
-      "visitDate": "2026-10-22",
+      "visitDate": "2026-11-08",
       "routes": [
         {
           "id": 7,
@@ -78,8 +78,8 @@
           "name": "Ruta 1-A: Montaña Machupicchu",
           "circuit": "Circuito 1 - Panorámico",
           "capacity": 50,
-          "sold": 2,
-          "available": 48
+          "sold": 0,
+          "available": 50
         },
         {
           "id": 8,
@@ -87,8 +87,8 @@
           "name": "Ruta 1-B: Terraza superior",
           "circuit": "Circuito 1 - Panorámico",
           "capacity": 100,
-          "sold": 20,
-          "available": 80
+          "sold": 0,
+          "available": 100
         },
         {
           "id": 11,
@@ -96,8 +96,8 @@
           "name": "Ruta 2-A: Clásico Diseñada",
           "circuit": "Circuito 2 - Circuito clásico",
           "capacity": 600,
-          "sold": 426,
-          "available": 174
+          "sold": 0,
+          "available": 600
         },
         {
           "id": 12,
@@ -105,8 +105,8 @@
           "name": "Ruta 2-B: Terraza Inferior",
           "circuit": "Circuito 2 - Circuito clásico",
           "capacity": 100,
-          "sold": 34,
-          "available": 66
+          "sold": 0,
+          "available": 100
         },
         {
           "id": 13,
@@ -114,8 +114,8 @@
           "name": "Ruta 3-A: Montaña Waynapicchu",
           "circuit": "Circuito 3 - Machupicchu realeza",
           "capacity": 50,
-          "sold": 5,
-          "available": 45
+          "sold": 0,
+          "available": 50
         },
         {
           "id": 14,
@@ -123,8 +123,8 @@
           "name": "Ruta 3-B: Realeza diseñada",
           "circuit": "Circuito 3 - Machupicchu realeza",
           "capacity": 100,
-          "sold": 11,
-          "available": 89
+          "sold": 0,
+          "available": 100
         }
       ]
     }
@@ -132,5 +132,5 @@
   "status": "ok",
   "phase": "sales",
   "stopForDay": false,
-  "rawFile": "data/raw/2026-10-20T14-59-02-436Z.json"
+  "rawFile": "data/raw/2026-11-06T15-20-41-186Z.json"
 }
