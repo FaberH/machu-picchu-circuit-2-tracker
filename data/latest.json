@@ -1,12 +1,12 @@
 {
   "schemaVersion": 2,
-  "observedAt": "2026-11-06T16:47:05.576Z",
+  "observedAt": "2026-11-06T17:14:29.016Z",
   "source": "https://tuboleto.cultura.pe/disponibilidad/llaqta_machupicchu",
   "collectionDate": "2026-11-06",
   "ticketDesk": {
     "capacity": 1000,
-    "issued": 319,
-    "available": 681
+    "issued": 326,
+    "available": 674
   },
   "warning": null,
   "visitDates": [
@@ -37,8 +37,8 @@
           "name": "Ruta 2-A: Clásico Diseñada",
           "circuit": "Circuito 2 - Circuito clásico",
           "capacity": 600,
-          "sold": 269,
-          "available": 331
+          "sold": 270,
+          "available": 330
         },
         {
           "id": 12,
@@ -132,5 +132,5 @@
   "status": "ok",
   "phase": "sales",
   "stopForDay": false,
-  "rawFile": "data/raw/2026-11-06T16-47-05-576Z.json"
+  "rawFile": "data/raw/2026-11-06T17-14-29-016Z.json"
 }
