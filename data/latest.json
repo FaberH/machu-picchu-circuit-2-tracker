@@ -1,12 +1,12 @@
 {
   "schemaVersion": 2,
-  "observedAt": "2026-11-06T15:20:41.186Z",
+  "observedAt": "2026-11-06T16:47:05.576Z",
   "source": "https://tuboleto.cultura.pe/disponibilidad/llaqta_machupicchu",
   "collectionDate": "2026-11-06",
   "ticketDesk": {
     "capacity": 1000,
-    "issued": 287,
-    "available": 713
+    "issued": 319,
+    "available": 681
   },
   "warning": null,
   "visitDates": [
@@ -37,8 +37,8 @@
           "name": "Ruta 2-A: Clásico Diseñada",
           "circuit": "Circuito 2 - Circuito clásico",
           "capacity": 600,
-          "sold": 238,
-          "available": 362
+          "sold": 269,
+          "available": 331
         },
         {
           "id": 12,
@@ -46,8 +46,8 @@
           "name": "Ruta 2-B: Terraza Inferior",
           "circuit": "Circuito 2 - Circuito clásico",
           "capacity": 100,
-          "sold": 29,
-          "available": 71
+          "sold": 33,
+          "available": 67
         },
         {
           "id": 13,
@@ -55,8 +55,8 @@
           "name": "Ruta 3-A: Montaña Waynapicchu",
           "circuit": "Circuito 3 - Machupicchu realeza",
           "capacity": 50,
-          "sold": 3,
-          "available": 47
+          "sold": 4,
+          "available": 46
         },
         {
           "id": 14,
@@ -64,8 +64,8 @@
           "name": "Ruta 3-B: Realeza diseñada",
           "circuit": "Circuito 3 - Machupicchu realeza",
           "capacity": 100,
-          "sold": 4,
-          "available": 96
+          "sold": 5,
+          "available": 95
         }
       ]
     },
@@ -132,5 +132,5 @@
   "status": "ok",
   "phase": "sales",
   "stopForDay": false,
-  "rawFile": "data/raw/2026-11-06T15-20-41-186Z.json"
+  "rawFile": "data/raw/2026-11-06T16-47-05-576Z.json"
 }
