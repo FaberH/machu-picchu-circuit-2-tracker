@@ -79,8 +79,6 @@ function renderDates() {
   }
   select.disabled = !dates.length;
   select.value = state.visitDate ?? '';
-  put('summary-date', state.visitDate ? visitLabel(state.visitDate) : '—');
-  put('summary-date-note', state.visitDate && state.visitDate < today ? 'Past visit date' : 'Monitored visit date');
 }
 
 function renderOverview() {
@@ -90,51 +88,52 @@ function renderOverview() {
   put('summary-sold-out', snapshot ? `${totals.soldOut} / ${totals.observed}` : '—');
   $('summary-time').replaceChildren(snapshot ? timestamp(snapshot.time) : '—');
 
-  const cards = state.routes.map(route => {
+  const circuit = document.createDocumentFragment();
+  const other = document.createDocumentFragment();
+  for (const route of state.routes) {
     const row = snapshot?.routes.get(route.code);
     const featured = route.code.startsWith('2-');
     const soldOut = row?.available === 0;
     const card = node('article', 'route-card');
-    card.classList.toggle('featured', featured);
     card.classList.toggle('sold-out', soldOut);
-    const top = node('div', 'route-top');
-    top.append(node('span', 'route-code', `Route ${route.code}`));
-    if (featured) top.append(node('span', 'circuit-label', 'Circuit 2'));
     const name = typeof row?.name === 'string' ? row.name.replace(/^Ruta\s+[0-9]+-[A-Z]:?\s*/i, '') : '';
+    const identity = node('h3', 'route-identity');
+    identity.append(node('span', 'route-code', route.code), node('span', 'route-name', name || route.name));
     const inventory = node('div', 'inventory');
     inventory.append(node('strong', 'route-number', row ? number.format(row.available) : '—'));
-    inventory.append(node('span', 'inventory-label', soldOut ? 'Sold out' : row ? 'remaining' : 'No sample'));
-    card.append(top, node('h3', 'route-name', name || route.name), inventory);
+    inventory.append(node('span', 'inventory-label', soldOut ? 'Sold out' : row ? 'left' : 'No sample'));
 
+    const capacity = node('div', 'route-capacity');
     const meter = node('div', 'meter');
     meter.setAttribute('aria-hidden', 'true');
     const fill = node('span');
     if (row) fill.style.width = `${100 * row.available / row.capacity}%`;
     meter.append(fill);
-    card.append(meter);
     const meta = node('div', 'route-meta');
     if (row) {
       const fraction = row.available / row.capacity;
       const percentLabel = fraction > 0 && fraction < .001 ? '<0.1%'
         : fraction > .999 && fraction < 1 ? '>99.9%' : percentage.format(fraction);
-      meta.append(node('span', '', `${percentLabel} left`), node('span', '', `${number.format(row.capacity)} capacity`));
-    } else {
-      meta.append(node('span', '', 'No observation in this snapshot'));
+      meta.append(node('span', '', percentLabel), node('span', '', `of ${number.format(row.capacity)}`));
     }
+    capacity.append(meter, meta);
     const delta = node('p', 'route-delta');
     const before = stats?.get(route.code)?.previous;
     if (row && before) {
       const change = row.available - before.available;
-      const value = node('strong', change < 0 ? 'down' : change > 0 ? 'up' : '', change ? signed(change) : 'No change');
-      delta.append(value, ' vs previous sample');
+      const value = node('strong', change < 0 ? 'down' : change > 0 ? 'up' : '', change ? signed(change) : featured ? 'No change' : '0');
+      delta.append(value);
+      if (featured && change) delta.append(' vs previous');
       delta.title = `Previous sample at ${peruTimestamp(before.time)} Peru time`;
     } else {
-      delta.textContent = 'Change unavailable';
+      if (!featured) delta.append(node('span', '', '—'), node('span', 'sr-only', 'Change unavailable'));
+      else delta.textContent = 'Change unavailable';
     }
-    card.append(meta, delta);
-    return card;
-  });
-  $('route-cards').replaceChildren(...cards);
+    card.append(identity, inventory, capacity, delta);
+    (featured ? circuit : other).append(card);
+  }
+  $('circuit-routes').replaceChildren(circuit);
+  $('route-cards').replaceChildren(other);
 }
 
 function renderDesk() {
@@ -397,6 +396,12 @@ $('focus-route').addEventListener('change', event => {
   renderChart();
 });
 $('show-all').addEventListener('click', showAll);
+$('circuit-history').addEventListener('click', event => {
+  if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+  state.focus = '';
+  state.selected = new Set(state.routes.filter(route => route.code.startsWith('2-')).map(route => route.code));
+  renderChart();
+});
 for (const button of document.querySelectorAll('[data-range]')) {
   button.addEventListener('click', () => {
     state.range = button.dataset.range;

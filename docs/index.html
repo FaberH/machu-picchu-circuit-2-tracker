@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#163d32">
+  <meta name="theme-color" content="#f0f3ed">
   <meta name="description" content="Independent Machu Picchu ticket observations, with route availability and historical trends in Peru time.">
   <title>Machu Picchu Ticket Pulse</title>
   <link rel="stylesheet" href="styles.css">
@@ -16,8 +16,7 @@
     <nav class="topbar wrap" aria-label="Main navigation">
       <a class="brand" href="./">
         <svg class="brand-mark" viewBox="0 0 36 36" aria-hidden="true">
-          <rect x="1" y="1" width="34" height="34" rx="9" fill="none" stroke="currentColor" opacity=".45"/>
-          <path d="M7 25l7-11 4 6 5-9 6 14H7z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+          <path d="M5 26l8-12 5 6 5-11 8 17H5zm7 5h12" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
         <span>Ticket Pulse</span>
       </a>
@@ -26,56 +25,67 @@
         <a href="#history">History</a>
         <a href="#observations">Observations</a>
       </div>
-      <a class="official" href="https://tuboleto.cultura.pe/llaqta_machupicchu">Official tickets <span aria-hidden="true">↗</span></a>
+      <a class="official" href="https://tuboleto.cultura.pe/llaqta_machupicchu">
+        Official tickets
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 12l8-8M6 4h6v6"/></svg>
+      </a>
     </nav>
-    <div class="intro wrap">
-      <div>
-        <p class="eyebrow">Peru <span aria-hidden="true">/</span> Independent availability tracker</p>
-        <h1>Machu Picchu Ticket Pulse</h1>
-        <p class="intro-copy">Track six routes, with a closer look at Circuit 2.</p>
-      </div>
-      <div class="controls">
-        <label class="date-control" for="visit-date">Visit date
-          <select id="visit-date" disabled><option>Loading dates…</option></select>
-        </label>
-        <button class="refresh" id="refresh" type="button">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 8a8 8 0 1 0 .4 7M20 3v5h-5"/></svg>
-          Refresh
-        </button>
-      </div>
-    </div>
   </header>
 
   <main class="wrap" id="main">
     <section class="overview" id="availability" aria-labelledby="availability-title">
-      <h2 id="availability-title" class="sr-only">Ticket availability</h2>
-      <dl class="summary-grid" aria-label="Selected visit date summary">
-        <div><dt>Visit date</dt><dd id="summary-date">—</dd><dd class="metric-note" id="summary-date-note">Monitored visit date</dd></div>
-        <div><dt>Tickets remaining</dt><dd id="summary-remaining">—</dd><dd class="metric-note" id="summary-coverage">Across observed routes</dd></div>
-        <div><dt>Sold-out routes</dt><dd id="summary-sold-out">—</dd><dd class="metric-note">At the latest observation</dd></div>
-        <div><dt>Latest observation</dt><dd id="summary-time">—</dd><dd class="metric-note">Peru time (UTC−5)</dd></div>
-      </dl>
-      <div class="status" role="status" id="status" data-kind="loading">
-        <span class="status-badge" id="status-badge">Loading</span>
-        <span id="status-detail">Fetching observations for the visit date.</span>
-      </div>
-      <div class="section-heading route-heading">
+      <div class="intro">
         <div>
-          <p class="eyebrow">Availability by route</p>
-          <h2>Latest snapshot</h2>
+          <h1 id="availability-title">Machu Picchu</h1>
+          <p class="intro-copy">Ticket availability across six routes, sampled independently.</p>
         </div>
-        <p class="muted">Changes compare with the previous sample for each route.</p>
+        <div class="controls">
+          <label class="date-control" for="visit-date">Visit date
+            <select id="visit-date" disabled><option>Loading dates…</option></select>
+          </label>
+          <button class="refresh" id="refresh" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 8a8 8 0 1 0 .4 7M20 3v5h-5"/></svg>
+            Refresh
+          </button>
+        </div>
       </div>
-      <div id="route-cards" class="route-grid"></div>
+      <div class="observation-strip">
+        <p class="observation-time">Latest observation <span id="summary-time">—</span> <span class="zone">Peru time</span></p>
+        <div class="status" role="status" id="status" data-kind="loading">
+          <span class="status-badge" id="status-badge">Loading</span>
+          <span id="status-detail">Fetching observations for the visit date.</span>
+        </div>
+      </div>
+      <div class="snapshot">
+        <section class="circuit" aria-labelledby="circuit-title">
+          <div class="circuit-heading">
+            <h2 id="circuit-title">Circuit 2</h2>
+            <a id="circuit-history" href="#history">
+              Circuit 2 history
+              <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10m-4-4 4 4 4-4"/></svg>
+            </a>
+          </div>
+          <div id="circuit-routes" class="circuit-routes"></div>
+          <p class="circuit-note">Changes compare each route with its previous observation.</p>
+        </section>
+        <section class="route-ledger" aria-labelledby="other-routes-title">
+          <div class="ledger-heading">
+            <h2 id="other-routes-title">Other routes</h2>
+            <span>Change vs previous</span>
+          </div>
+          <div id="route-cards" class="route-list"></div>
+          <dl class="snapshot-totals" aria-label="Totals for the selected visit date">
+            <div><dt>Total remaining</dt><dd id="summary-remaining">—</dd><dd class="metric-note" id="summary-coverage">Across observed routes</dd></div>
+            <div><dt>Sold-out routes</dt><dd id="summary-sold-out">—</dd></div>
+          </dl>
+        </section>
+      </div>
       <p id="desk" class="desk-note" hidden></p>
     </section>
 
-    <section class="panel chart-panel" id="history" aria-labelledby="chart-title">
+    <section class="chart-panel" id="history" aria-labelledby="chart-title">
       <div class="section-heading">
-        <div>
-          <p class="eyebrow">Availability history</p>
-          <h2 id="chart-title">Tickets over time</h2>
-        </div>
+        <h2 id="chart-title">Tickets over time</h2>
         <div class="range-control" role="group" aria-label="History time range">
           <button type="button" data-range="30" aria-pressed="false">30 min</button>
           <button type="button" data-range="120" aria-pressed="false">2 hours</button>
@@ -106,12 +116,9 @@
       <p id="chart-help" class="caption">Hover, tap, or use the arrow keys to inspect a sample. Breaks mark missing observations. Short ranges end at the latest sample. Today uses Peru time.</p>
     </section>
 
-    <section class="panel" aria-labelledby="insights-title">
+    <section class="report-section" aria-labelledby="insights-title">
       <div class="section-heading">
-        <div>
-          <p class="eyebrow">Sampled changes</p>
-          <h2 id="insights-title">Route insights</h2>
-        </div>
+        <h2 id="insights-title">Route insights</h2>
         <label class="field" for="insight-route">Route
           <select id="insight-route"></select>
         </label>
@@ -121,17 +128,16 @@
       <p class="caption">Short-window changes compare samples near the start and end of each window, with no gaps between them. Counts can rise or fall. A change measures availability, and the first observed zero records only the sample time.</p>
     </section>
 
-    <section class="panel" id="observations" aria-labelledby="observations-title">
+    <section class="report-section" id="observations" aria-labelledby="observations-title">
       <div class="section-heading">
-        <div>
-          <p class="eyebrow">Observation log</p>
-          <h2 id="observations-title">Recorded samples</h2>
-        </div>
+        <h2 id="observations-title">Recorded samples</h2>
         <div class="table-controls">
           <label class="field" for="table-route">Route
             <select id="table-route"><option value="">All routes</option></select>
           </label>
-          <button type="button" class="secondary" id="download-csv" disabled>Download CSV <span aria-hidden="true">↓</span></button>
+          <button type="button" class="secondary" id="download-csv" disabled>Download CSV
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v8M5 7l3 3 3-3m-8 6h10"/></svg>
+          </button>
         </div>
       </div>
       <p id="empty-table" class="empty" hidden></p>
@@ -159,7 +165,9 @@
   </main>
   <footer class="wrap">
     <span>Independent tracker · Unaffiliated with Peru’s Ministry of Culture</span>
-    <a href="https://github.com/FaberH/machu-picchu-circuit-2-tracker/blob/main/REPORT.md">Technical report <span aria-hidden="true">↗</span></a>
+    <a href="https://github.com/FaberH/machu-picchu-circuit-2-tracker/blob/main/REPORT.md">Technical report
+      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 12l8-8M6 4h6v6"/></svg>
+    </a>
   </footer>
 </body>
 </html>
