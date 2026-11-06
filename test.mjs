@@ -14,8 +14,8 @@ import {
   visitDatesFor,
 } from './core.mjs';
 import {
-  availableDates, buildHistory, csvForHistory, defaultVisitDate, freshness, peruTimestamp,
-  rangeStart, samplingGap,
+  availableDates, buildHistory, csvForHistory, defaultVisitDate, freshness, latestSnapshot, peruTimestamp,
+  preferredVisitDate, rangeStart, samplingGap, upcomingVisitDates,
 } from './docs/dashboard-data.js';
 import {overnightBands, ticketAxis, timeTicks} from './docs/history-chart.js';
 
@@ -153,6 +153,43 @@ function dashboardRow(time, available, route = '2-A', date = visitDate) {
     capacity: 600, sold: 600 - available, available,
   };
 }
+
+test('comparison dates follow the two days after the current Peru date', () => {
+  assert.deepEqual(upcomingVisitDates(Date.parse('2026-12-31T04:59:00Z')), ['2026-12-31', '2027-01-01']);
+  assert.deepEqual(upcomingVisitDates(Date.parse('2026-12-31T05:00:00Z')), ['2027-01-01', '2027-01-02']);
+});
+
+test('comparison snapshots use only the latest valid observation for the requested date', () => {
+  const latest = dashboardRow('11:02:00', 0);
+  const observations = [
+    latest,
+    dashboardRow('11:01:00', 12, '2-B'),
+    dashboardRow('11:03:00', 25, '2-B', '2026-11-08'),
+    dashboardRow('11:04:00', -1),
+    null,
+  ];
+  assert.deepEqual(latestSnapshot(observations, visitDate), {
+    time: Date.parse(latest.observedAt), routes: new Map([['2-A', latest]]),
+  });
+  assert.equal(latestSnapshot(observations, '2026-11-09'), undefined);
+});
+
+test('default visit date favors the nearest fresh upcoming observation', () => {
+  const later = '2026-11-08';
+  const dates = ['2026-11-06', visitDate, later];
+  const now = Date.parse('2026-11-06T11:05:00Z');
+  const comparison = new Map([
+    [visitDate, {snapshot: {time: Date.parse('2026-11-06T11:01:00Z')}, source: 'api'}],
+    [later, {snapshot: {time: Date.parse('2026-11-06T11:04:00Z')}, source: 'api'}],
+  ]);
+  assert.equal(preferredVisitDate(dates, comparison, now), later);
+  comparison.get(visitDate).snapshot.time = Date.parse('2026-11-06T11:03:10Z');
+  assert.equal(preferredVisitDate(dates, comparison, now), visitDate);
+  assert.equal(preferredVisitDate(dates, comparison, Date.parse('2026-11-06T11:20:00Z')), visitDate);
+  comparison.get(visitDate).failed = true;
+  assert.equal(preferredVisitDate(dates, comparison, Date.parse('2026-11-06T11:20:00Z')), later);
+  assert.equal(preferredVisitDate(dates, new Map(), now), '2026-11-06');
+});
 
 test('dashboard sorts visit dates and selects the closest date using the Peru calendar', () => {
   const dates = availableDates({dates: ['2026-11-08', '2026-11-05', '2026-11-06', '2026-11-06']});

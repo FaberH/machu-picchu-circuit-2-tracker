@@ -56,7 +56,7 @@ button:disabled, button[aria-disabled="true"], select:disabled { cursor: default
   color: var(--forest); font-size: .8rem; font-weight: 700; white-space: nowrap;
 }
 .official:hover { background: var(--sage); border-color: #9ab4a3; }
-.official svg, .circuit-heading a svg, footer svg, .secondary svg {
+.official svg, .circuit-heading a svg, .comparison-history svg, footer svg, .secondary svg {
   width: 15px; height: 15px; flex: none; fill: none; stroke: currentColor;
   stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round;
 }
@@ -106,11 +106,44 @@ select:enabled:hover, .secondary:hover:not(:disabled), .refresh:hover:not([aria-
 }
 .circuit-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding-bottom: 13px; border-bottom: 1px solid var(--forest-line); }
 .circuit-heading h2 { font-size: 2.25rem; }
+.circuit-heading p { margin: 2px 0 0; color: var(--forest-muted); font-size: .79rem; }
 .circuit-heading a {
   display: inline-flex; align-items: center; gap: 4px; min-height: 34px;
   color: var(--forest-muted); font-size: .78rem; font-weight: 670;
 }
 .circuit-heading a:hover { color: var(--on-forest); }
+.comparison-dates { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); flex: 1; }
+.comparison-date { display: flex; flex-direction: column; min-width: 0; padding: 13px 18px 8px 0; }
+.comparison-date + .comparison-date { padding-inline: 18px 0; border-left: 1px solid var(--forest-line); }
+@supports (grid-template-rows: subgrid) {
+  .comparison-date { display: grid; grid-row: span 5; grid-template-rows: subgrid; }
+}
+.comparison-date h3 { margin: 0 0 6px; font-size: 1.04rem; font-weight: 750; }
+.comparison-status .status-badge { flex: 0 1 auto; min-width: 0; line-height: 1.3; }
+.comparison-status .status-badge::before { flex: none; }
+.comparison-time { min-height: 1.5em; margin: 5px 0 8px; color: var(--forest-muted); font-size: .75rem; }
+.comparison-time time { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.comparison-counts { margin: 0 0 5px; }
+.comparison-counts > div {
+  display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap;
+  gap: 0 6px; padding: 7px 0; border-top: 1px solid var(--forest-line);
+}
+.comparison-counts dt { color: #cce6bc; font-weight: 800; letter-spacing: .045em; }
+.comparison-counts dd { display: flex; align-items: baseline; gap: 0 5px; flex-wrap: wrap; }
+.comparison-counts strong { font-size: 1.45rem; line-height: 1.05; font-variant-numeric: tabular-nums; }
+.comparison-counts dd span { color: var(--forest-muted); font-size: .75rem; }
+.comparison-counts .sold-out dd span { color: #ffd1b9; font-weight: 700; }
+.comparison-history {
+  display: inline-flex; align-items: center; align-self: start; justify-self: start; gap: 4px; min-height: 36px; margin-top: auto;
+  padding: 4px 0; border: 0; background: transparent; color: var(--on-forest); font-size: .79rem; font-weight: 700;
+  text-decoration: underline; text-underline-offset: .23em;
+}
+.comparison-history:hover:not(:disabled) { color: #cce6bc; }
+.comparison-history:disabled { opacity: 1; color: var(--forest-muted); text-decoration: none; }
+.circuit-details { border-top: 1px solid var(--forest-line); }
+.circuit-details summary { min-height: 34px; padding-block: 8px 4px; color: var(--forest-muted); cursor: pointer; font-size: .78rem; }
+.circuit-details summary:hover { color: var(--on-forest); }
+.circuit-details a { display: inline-block; margin-top: 5px; color: var(--on-forest); font-size: .77rem; }
 .circuit-routes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); flex: 1; }
 .route-card { min-width: 0; }
 .circuit-routes .route-card { display: flex; flex-direction: column; padding: 15px 19px 12px 0; }
@@ -170,6 +203,7 @@ dd { margin: 0; font-variant-numeric: tabular-nums; }
 .chart-panel { margin-top: 25px; padding: 20px 22px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
 .report-section { margin-top: 32px; padding-top: 17px; border-top: 1px solid var(--line); }
 .section-heading { display: flex; align-items: end; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.history-visit { margin: 4px 0 0; color: var(--muted); font-size: .79rem; }
 .range-control { display: flex; flex-wrap: wrap; gap: 2px; padding: 3px; border: 1px solid var(--line); border-radius: var(--radius); background: #eff1e9; }
 .range-control button, .route-filter, .route-presets button {
   min-height: 34px; padding: 5px 10px; border: 1px solid transparent; border-radius: 5px;
@@ -263,6 +297,10 @@ footer a { display: inline-flex; align-items: center; gap: 5px; }
   .circuit { padding: 14px 15px 12px; }
   .circuit-heading { padding-bottom: 8px; }
   .circuit-heading h2 { font-size: 1.85rem; }
+  .comparison-date { padding-right: 10px; }
+  .comparison-date + .comparison-date { padding-left: 10px; }
+  .comparison-date h3 { font-size: .94rem; }
+  .comparison-counts strong { font-size: 1.3rem; }
   .circuit-routes .route-card { padding: 12px 11px 9px 0; }
   .circuit-routes .route-card:nth-child(even) { padding-inline: 11px 0; }
   .circuit .route-number { font-size: 2.6rem; }

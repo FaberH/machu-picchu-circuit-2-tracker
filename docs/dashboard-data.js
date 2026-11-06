@@ -19,6 +19,9 @@ const fullDate = new Intl.DateTimeFormat('en-GB', {
 const visitDateFormat = new Intl.DateTimeFormat('en-GB', {
   timeZone: 'UTC', weekday: 'short', day: 'numeric', month: 'short', year: 'numeric',
 });
+const compactVisitDateFormat = new Intl.DateTimeFormat('en-GB', {
+  timeZone: 'UTC', weekday: 'short', day: 'numeric', month: 'short',
+});
 
 export const peruDate = time => calendar.format(time);
 export const peruMidnight = time => Date.parse(`${peruDate(time)}T00:00:00-05:00`);
@@ -28,7 +31,8 @@ export const peruTimestamp = (time, precise = false) => {
   const formatter = precise && time % 1000 ? preciseClock : exactClock;
   return `${fullDate.format(time)} · ${formatter.format(time)}`;
 };
-export const visitLabel = date => visitDateFormat.format(Date.parse(`${date}T00:00:00Z`));
+export const visitLabel = (date, compact = false) => (compact ? compactVisitDateFormat : visitDateFormat)
+  .format(Date.parse(`${date}T00:00:00Z`));
 
 export const routes = [
   {code: '2-A', name: 'Clásico Diseñada', color: '#17644e', dash: ''},
@@ -52,6 +56,22 @@ export function availableDates(data) {
 export function defaultVisitDate(dates, now = Date.now()) {
   const today = peruDate(now);
   return dates.find(date => date >= today) ?? dates.at(-1) ?? null;
+}
+
+export function upcomingVisitDates(now = Date.now()) {
+  const midnight = peruMidnight(now);
+  return [1, 2].map(days => peruDate(midnight + days * 24 * 60 * minute));
+}
+
+export function preferredVisitDate(dates, comparison, now = Date.now()) {
+  const upcoming = upcomingVisitDates(now);
+  return upcoming.find(visitDate => {
+    const record = comparison.get(visitDate);
+    return record?.snapshot && freshness({...record, visitDate, now}).kind === 'fresh';
+  }) ?? upcoming.find(visitDate => {
+    const record = comparison.get(visitDate);
+    return record?.snapshot && !record.failed;
+  }) ?? defaultVisitDate(dates, now);
 }
 
 function cadence(time) {
@@ -106,14 +126,29 @@ function summarize(points) {
   return {first, last, previous, firstZero, largestDrop, changes};
 }
 
+function observationTime(row, visitDate) {
+  if (!row || row.visitDate !== visitDate || !/^\d+-[A-Z]$/.test(row.route)
+    || !Number.isSafeInteger(row.capacity) || row.capacity <= 0
+    || !Number.isSafeInteger(row.available) || row.available < 0 || row.available > row.capacity) return NaN;
+  return Date.parse(row.observedAt);
+}
+
+export function latestSnapshot(observations, visitDate) {
+  let snapshot;
+  for (const row of observations) {
+    const time = observationTime(row, visitDate);
+    if (!Number.isFinite(time) || (snapshot && time < snapshot.time)) continue;
+    if (!snapshot || time > snapshot.time) snapshot = {time, routes: new Map()};
+    snapshot.routes.set(row.route, row);
+  }
+  return snapshot;
+}
+
 export function buildHistory(observations, visitDate) {
   const byTime = new Map();
   for (const row of observations) {
-    if (row.visitDate !== visitDate) continue;
-    const time = Date.parse(row.observedAt);
-    if (!Number.isFinite(time) || !/^\d+-[A-Z]$/.test(row.route)
-      || !Number.isSafeInteger(row.capacity) || row.capacity <= 0
-      || !Number.isSafeInteger(row.available) || row.available < 0 || row.available > row.capacity) continue;
+    const time = observationTime(row, visitDate);
+    if (!Number.isFinite(time)) continue;
     if (!byTime.has(time)) byTime.set(time, new Map());
     byTime.get(time).set(row.route, row);
   }

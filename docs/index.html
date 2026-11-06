@@ -50,7 +50,7 @@
         </div>
       </div>
       <div class="observation-strip">
-        <p class="observation-time">Latest observation <span id="summary-time">—</span> <span class="zone">Peru time</span></p>
+        <p class="observation-time">Selected date observation <span id="summary-time">—</span> <span class="zone">Peru time</span></p>
         <div class="status" role="status" id="status" data-kind="loading">
           <span class="status-badge" id="status-badge">Loading</span>
           <span id="status-detail">Fetching observations for the visit date.</span>
@@ -59,18 +59,46 @@
       <div class="snapshot">
         <section class="circuit" aria-labelledby="circuit-title">
           <div class="circuit-heading">
-            <h2 id="circuit-title">Circuit 2</h2>
-            <a id="circuit-history" href="#history">
-              Circuit 2 history
-              <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10m-4-4 4 4 4-4"/></svg>
+            <div>
+              <h2 id="circuit-title">Circuit 2</h2>
+              <p>Upcoming visit dates</p>
+            </div>
+            <a href="https://tuboleto.cultura.pe/llaqta_machupicchu">
+              Official booking
+              <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 12l8-8M6 4h6v6"/></svg>
             </a>
           </div>
-          <div id="circuit-routes" class="circuit-routes"></div>
-          <p class="circuit-note">Changes compare each route with its previous observation.</p>
+          <div id="comparison-dates" class="comparison-dates"></div>
+          <template id="comparison-date-template">
+            <article class="comparison-date">
+              <h3><time class="comparison-visit"></time></h3>
+              <div class="status comparison-status">
+                <span class="status-badge"></span>
+              </div>
+              <p class="comparison-time"><time hidden></time><span hidden> Peru time</span><span class="comparison-no-time">Awaiting observation</span></p>
+              <dl class="comparison-counts">
+                <div data-route="2-A"><dt>2-A</dt><dd><strong>—</strong> <span>No sample</span></dd></div>
+                <div data-route="2-B"><dt>2-B</dt><dd><strong>—</strong> <span>No sample</span></dd></div>
+              </dl>
+              <button class="comparison-history" type="button" disabled>
+                View history
+                <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10m-4-4 4 4 4-4"/></svg>
+              </button>
+            </article>
+          </template>
+          <details class="circuit-details">
+            <summary>Route details for <span id="circuit-selected-date">selected date</span></summary>
+            <div id="circuit-routes" class="circuit-routes"></div>
+            <p class="circuit-note">Changes compare each route with its previous observation.</p>
+            <a id="circuit-history" href="#history">Circuit 2 history for this date</a>
+          </details>
         </section>
         <section class="route-ledger" aria-labelledby="other-routes-title">
           <div class="ledger-heading">
-            <h2 id="other-routes-title">Other routes</h2>
+            <div>
+              <h2 id="other-routes-title">Other routes</h2>
+              <p id="ledger-visit" class="history-visit"></p>
+            </div>
             <span>Change vs previous</span>
           </div>
           <div id="route-cards" class="route-list"></div>
@@ -85,7 +113,10 @@
 
     <section class="chart-panel" id="history" aria-labelledby="chart-title">
       <div class="section-heading">
-        <h2 id="chart-title">Tickets over time</h2>
+        <div>
+          <h2 id="chart-title" tabindex="-1">Tickets over time</h2>
+          <p class="history-visit" id="history-visit"></p>
+        </div>
       </div>
       <div class="chart-controls">
         <div id="chart-routes" class="chart-control" role="group" aria-labelledby="chart-routes-label">

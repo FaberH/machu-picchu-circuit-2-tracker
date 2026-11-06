@@ -1,6 +1,6 @@
 import {
-  availableDates, buildHistory, csvForHistory, defaultVisitDate, freshness, peruDate,
-  peruTimestamp, routes, visitLabel, windows,
+  availableDates, buildHistory, csvForHistory, freshness, latestSnapshot, peruClock, peruDate,
+  peruShortDate, peruTimestamp, preferredVisitDate, routes, upcomingVisitDates, visitLabel, windows,
 } from './dashboard-data.js';
 import {createHistoryChart} from './history-chart.js';
 
@@ -33,8 +33,11 @@ const state = {
   visitDate: null, explicitDate: false, dates: [], model: null, rows: [], source: '', latest: null, desk: null,
   failed: false, request: null, lastRequest: -Infinity, range: 'day',
   selected: new Set(presetRoutes(routes, 'circuit')),
-  routes: [...routes], tablePage: 0,
+  routes: [...routes], tablePage: 0, comparison: new Map(), comparisonFailed: false,
 };
+
+const comparisonColumns = [0, 1].map(() => $('comparison-date-template').content.firstElementChild.cloneNode(true));
+$('comparison-dates').append(...comparisonColumns);
 
 const chart = createHistoryChart({
   shell: $('chart-shell'), interaction: $('chart-interaction'), chart: $('chart'),
@@ -81,6 +84,57 @@ function renderDates() {
   }
   select.disabled = !dates.length;
   select.value = state.visitDate ?? '';
+  const dateLabel = state.visitDate ? visitLabel(state.visitDate) : '';
+  put('circuit-selected-date', dateLabel || 'selected date');
+  put('history-visit', dateLabel ? `Visit date · ${dateLabel}` : '');
+  put('ledger-visit', dateLabel);
+  const details = $('circuit-routes').parentElement;
+  if (details.dataset.visitDate !== (state.visitDate ?? '')) {
+    details.dataset.visitDate = state.visitDate ?? '';
+    if (state.visitDate && !upcomingVisitDates().includes(state.visitDate)) details.open = true;
+  }
+}
+
+function renderComparison() {
+  const now = Date.now();
+  for (const [index, date] of upcomingVisitDates(now).entries()) {
+    const column = comparisonColumns[index];
+    const get = selector => column.querySelector(selector);
+    const record = state.comparison.get(date);
+    const snapshot = record?.snapshot;
+    const current = freshness({
+      ...record, visitDate: date, now, failed: state.comparisonFailed || record?.failed,
+      loading: Boolean(state.request && !record),
+    });
+    const dateLabel = visitLabel(date);
+    column.dataset.visitDate = date;
+    const visit = get('.comparison-visit');
+    visit.dateTime = date;
+    visit.textContent = visitLabel(date, true);
+    visit.title = dateLabel;
+    get('.comparison-status').dataset.kind = current.kind;
+    get('.status-badge').textContent = current.label;
+    const observed = get('.comparison-time time');
+    observed.hidden = !snapshot;
+    observed.nextElementSibling.hidden = !snapshot;
+    const noTime = get('.comparison-no-time');
+    noTime.hidden = Boolean(snapshot);
+    noTime.textContent = current.kind === 'loading' ? 'Checking availability…' : 'No sample time';
+    if (snapshot) {
+      observed.dateTime = new Date(snapshot.time).toISOString();
+      observed.title = `${peruTimestamp(snapshot.time, true)} Peru time`;
+      observed.textContent = `${peruShortDate(snapshot.time)} · ${peruClock(snapshot.time)}`;
+    }
+    for (const row of column.querySelectorAll('[data-route]')) {
+      const available = snapshot?.routes.get(row.dataset.route)?.available;
+      row.classList.toggle('sold-out', available === 0);
+      row.querySelector('strong').textContent = available == null ? '—' : number.format(available);
+      row.querySelector('dd span').textContent = available == null ? 'No sample' : available === 0 ? 'Sold out' : 'left';
+    }
+    const history = get('.comparison-history');
+    history.disabled = !snapshot;
+    history.setAttribute('aria-label', `View Circuit 2 history for ${dateLabel}`);
+  }
 }
 
 function renderOverview() {
@@ -316,20 +370,54 @@ async function fetchData(url, requestSignal) {
   return data;
 }
 
+function apiData(date, signal) {
+  const query = date ? `?visitDate=${encodeURIComponent(date)}` : '';
+  return fetchData(`${apiBase}/api/data${query}`, signal);
+}
+
+async function loadComparison(data, source, signal, reuse) {
+  const knownDates = availableDates(data);
+  const latest = data.latest;
+  const entries = await Promise.all(upcomingVisitDates().map(async date => {
+    const record = payload => ({
+      payload, view: {source, latest: payload.latest, snapshot: latestSnapshot(payload.observations, date)},
+    });
+    if (source === 'archive' || data.selectedDate === date) return [date, record(data)];
+    if (!knownDates.includes(date)) return [date, {view: {source, latest}}];
+    const cached = state.comparison.get(date);
+    if (reuse && cached?.source === 'api' && !cached.failed && latest?.status === 'ok'
+      && cached.snapshot?.time === Date.parse(latest.observedAt)) return [date, {view: {...cached, latest}}];
+    try {
+      return [date, record(await apiData(date, signal))];
+    } catch (error) {
+      if (signal.aborted) throw error;
+      return [date, {view: {...cached, source: cached?.source ?? source, latest, failed: true}}];
+    }
+  }));
+  return new Map(entries);
+}
+
+const comparisonViews = entries => new Map([...entries].map(([date, entry]) => [date, entry.view]));
+
 async function loadApi(date, signal) {
-  const url = `${apiBase}/api/data`;
-  const forDate = value => `${url}?visitDate=${encodeURIComponent(value)}`;
-  let data = await fetchData(date ? forDate(date) : url, signal);
-  const selected = date ?? defaultVisitDate(availableDates(data));
-  if (!date && selected && data.selectedDate !== selected) data = await fetchData(forDate(selected), signal);
-  return {data, date: selected, source: 'api'};
+  const data = await apiData(date, signal);
+  const source = 'api';
+  if (date) return {data, date, source};
+  const entries = await loadComparison(data, source, signal, false);
+  const comparison = comparisonViews(entries);
+  const selected = preferredVisitDate(availableDates(data), comparison);
+  const selectedData = entries.get(selected)?.payload
+    ?? (!selected || data.selectedDate === selected ? data : await apiData(selected, signal));
+  return {data: selectedData, date: selected, source, comparison};
 }
 
 async function loadArchive(date, signal) {
   const data = await fetchData('data.json', signal);
   const dates = availableDates(data);
   if (date && !dates.includes(date)) throw new Error('Visit date is missing from the archive');
-  return {data, date: date ?? defaultVisitDate(dates), source: 'archive'};
+  const source = 'archive';
+  const comparison = comparisonViews(await loadComparison(data, source, signal, false));
+  return {data, date: date ?? preferredVisitDate(dates, comparison), source, comparison};
 }
 
 async function refresh(date, dateChanged = false) {
@@ -352,7 +440,7 @@ async function refresh(date, dateChanged = false) {
   if (dateChanged || (!state.model && !state.failed)) renderData();
   renderStatus();
   renderDates();
-  let changed = false;
+  renderComparison();
   try {
     let result;
     let failed = false;
@@ -367,18 +455,29 @@ async function refresh(date, dateChanged = false) {
       }
     }
     if (state.request !== request) return;
-    changed = applyData(result.data, result.date, result.source);
+    const changed = applyData(result.data, result.date, result.source);
     state.failed = failed;
+    if (changed && state.model?.snapshot) renderData();
+    renderStatus();
+    renderDates();
+    const comparison = result.comparison
+      ?? comparisonViews(await loadComparison(result.data, result.source, request.signal, true));
+    if (state.request === request) {
+      state.comparison = comparison;
+      state.comparisonFailed = failed;
+    }
   } catch {
     if (state.request !== request) return;
     state.failed = true;
+    state.comparisonFailed = true;
   } finally {
     if (state.request === request) {
       state.request = null;
       renderStatus();
       renderDates();
       renderDesk();
-      if (changed || !state.model?.snapshot) renderData();
+      if (!state.model?.snapshot) renderData();
+      renderComparison();
     }
   }
 }
@@ -403,6 +502,15 @@ $('chart-routes').addEventListener('click', event => {
 $('circuit-history').addEventListener('click', event => {
   if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
   selectPreset('circuit');
+});
+$('comparison-dates').addEventListener('click', event => {
+  const button = event.target.closest('.comparison-history');
+  if (!button || button.disabled) return;
+  const date = button.closest('.comparison-date').dataset.visitDate;
+  selectPreset('circuit');
+  if (date !== state.visitDate) refresh(date, true);
+  $('history').scrollIntoView();
+  $('chart-title').focus({preventScroll: true});
 });
 for (const button of document.querySelectorAll('[data-range]')) {
   button.addEventListener('click', () => {
@@ -438,6 +546,7 @@ function refreshWhenVisible() {
   if (document.hidden) return;
   renderStatus();
   renderDates();
+  renderComparison();
   if (Date.now() - state.lastRequest >= refreshInterval) refresh();
 }
 
