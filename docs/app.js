@@ -9,6 +9,8 @@ const refreshInterval = 60_000;
 const pageSize = 24;
 const number = new Intl.NumberFormat('en');
 const percentage = new Intl.NumberFormat('en', {style: 'percent', maximumFractionDigits: 1});
+const isCircuitTwo = code => code.startsWith('2-');
+const presetRoutes = (items, preset) => items.map(route => route.code).filter(code => preset === 'all' || isCircuitTwo(code));
 const $ = id => document.getElementById(id);
 const node = (tag, className, text) => {
   const element = document.createElement(tag);
@@ -29,15 +31,15 @@ const signed = value => `${value > 0 ? '+' : value < 0 ? '−' : ''}${number.for
 
 const state = {
   visitDate: null, explicitDate: false, dates: [], model: null, rows: [], source: '', latest: null, desk: null,
-  failed: false, request: null, lastRequest: -Infinity, range: 'all',
-  selected: new Set(routes.map(route => route.code)), focus: '',
+  failed: false, request: null, lastRequest: -Infinity, range: 'day',
+  selected: new Set(presetRoutes(routes, 'circuit')),
   routes: [...routes], tablePage: 0,
 };
 
 const chart = createHistoryChart({
   shell: $('chart-shell'), interaction: $('chart-interaction'), chart: $('chart'),
   tooltip: $('chart-tooltip'), empty: $('empty-chart'), count: $('sample-count'),
-  description: $('chart-description'), announcement: $('chart-announcement'),
+  description: $('chart-description'), announcement: $('chart-announcement'), gapKey: $('chart-gap-key'),
 });
 
 function status() {
@@ -92,7 +94,7 @@ function renderOverview() {
   const other = document.createDocumentFragment();
   for (const route of state.routes) {
     const row = snapshot?.routes.get(route.code);
-    const featured = route.code.startsWith('2-');
+    const featured = isCircuitTwo(route.code);
     const soldOut = row?.available === 0;
     const card = node('article', 'route-card');
     card.classList.toggle('sold-out', soldOut);
@@ -154,6 +156,7 @@ function renderRouteControls() {
     button.type = 'button';
     button.dataset.route = route.code;
     button.setAttribute('aria-label', `Route ${route.code}`);
+    button.title = 'Toggle route. Shift-click to show only this route.';
     const swatch = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     swatch.setAttribute('viewBox', '0 0 18 6');
     swatch.setAttribute('aria-hidden', 'true');
@@ -166,7 +169,7 @@ function renderRouteControls() {
     button.prepend(swatch);
     return button;
   }));
-  for (const [id, label] of [['focus-route', 'Focus a route'], ['insight-route', null], ['table-route', 'All routes']]) {
+  for (const [id, label] of [['insight-route', null], ['table-route', 'All routes']]) {
     const select = $(id);
     const previous = select.value;
     const options = state.routes.map(route => new Option(`Route ${route.code}`, route.code));
@@ -183,11 +186,18 @@ function historyMessage() {
   return 'No observations for this visit date.';
 }
 
+function presetIsSelected(preset) {
+  const codes = presetRoutes(state.routes, preset);
+  return state.selected.size === codes.length && codes.every(code => state.selected.has(code));
+}
+
 function renderChart() {
   for (const button of $('route-filters').children) {
     button.setAttribute('aria-pressed', String(state.selected.has(button.dataset.route)));
   }
-  $('focus-route').value = state.focus;
+  for (const button of $('chart-routes').querySelectorAll('[data-preset]')) {
+    button.setAttribute('aria-pressed', String(presetIsSelected(button.dataset.preset)));
+  }
   for (const button of document.querySelectorAll('[data-range]')) {
     button.setAttribute('aria-pressed', String(button.dataset.range === state.range));
   }
@@ -283,10 +293,12 @@ function applyData(data, date, source) {
   if (changed) {
     state.rows = rows;
     state.model = buildHistory(rows, date);
+    const showAll = presetIsSelected('all');
+    const showCircuit = presetIsSelected('circuit');
     for (const [code, points] of state.model.byRoute) {
       if (state.routes.some(route => route.code === code)) continue;
       state.routes.push({code, name: points.at(-1).name || `Route ${code}`, color: '#3b5554', dash: '3 4'});
-      if (!state.focus) state.selected.add(code);
+      if (showAll || (showCircuit && isCircuitTwo(code))) state.selected.add(code);
     }
   }
   return changed;
@@ -367,40 +379,30 @@ async function refresh(date, dateChanged = false) {
       renderDates();
       renderDesk();
       if (changed || !state.model?.snapshot) renderData();
-      else if (state.range === 'today') renderChart();
     }
   }
 }
 
-function showAll() {
-  state.focus = '';
-  state.selected = new Set(state.routes.map(route => route.code));
+function selectPreset(preset) {
+  state.selected = new Set(presetRoutes(state.routes, preset));
   renderChart();
 }
 
 $('visit-date').addEventListener('change', event => refresh(event.target.value, true));
 $('refresh').addEventListener('click', () => refresh());
-$('route-filters').addEventListener('click', event => {
-  const code = event.target.closest('[data-route]')?.dataset.route;
-  if (!code) return;
-  state.focus = '';
-  if (state.selected.has(code)) state.selected.delete(code);
+$('chart-routes').addEventListener('click', event => {
+  const button = event.target.closest('button');
+  if (!button) return;
+  const {route: code, preset} = button.dataset;
+  if (preset) return selectPreset(preset);
+  if (event.shiftKey) state.selected = new Set([code]);
+  else if (state.selected.has(code)) state.selected.delete(code);
   else state.selected.add(code);
   renderChart();
 });
-$('focus-route').addEventListener('change', event => {
-  const code = event.target.value;
-  if (!code) return showAll();
-  state.focus = code;
-  state.selected = new Set([code]);
-  renderChart();
-});
-$('show-all').addEventListener('click', showAll);
 $('circuit-history').addEventListener('click', event => {
   if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-  state.focus = '';
-  state.selected = new Set(state.routes.filter(route => route.code.startsWith('2-')).map(route => route.code));
-  renderChart();
+  selectPreset('circuit');
 });
 for (const button of document.querySelectorAll('[data-range]')) {
   button.addEventListener('click', () => {

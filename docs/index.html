@@ -86,18 +86,26 @@
     <section class="chart-panel" id="history" aria-labelledby="chart-title">
       <div class="section-heading">
         <h2 id="chart-title">Tickets over time</h2>
-        <div class="range-control" role="group" aria-label="History time range">
-          <button type="button" data-range="30" aria-pressed="false">30 min</button>
-          <button type="button" data-range="120" aria-pressed="false">2 hours</button>
-          <button type="button" data-range="today" aria-pressed="false">Today</button>
-          <button type="button" data-range="all" aria-pressed="true">All history</button>
-        </div>
       </div>
       <div class="chart-controls">
-        <div id="route-filters" class="filters" role="group" aria-label="Routes shown in chart"></div>
-        <div class="focus-controls">
-          <select id="focus-route" aria-label="Focus chart on a route"><option value="">Focus a route</option></select>
-          <button type="button" class="text-button" id="show-all">Show all</button>
+        <div id="chart-routes" class="chart-control" role="group" aria-labelledby="chart-routes-label">
+          <span class="control-label" id="chart-routes-label">Routes</span>
+          <div class="route-controls">
+            <div class="route-presets">
+              <button type="button" data-preset="circuit" aria-pressed="true">Circuit 2</button>
+              <button type="button" data-preset="all" aria-pressed="false">All routes</button>
+            </div>
+            <div id="route-filters" class="filters"></div>
+          </div>
+        </div>
+        <div class="chart-control" role="group" aria-labelledby="chart-range-label">
+          <span class="control-label" id="chart-range-label">Time range</span>
+          <div class="range-control">
+            <button type="button" data-range="30" aria-pressed="false">30 min</button>
+            <button type="button" data-range="120" aria-pressed="false">2 hours</button>
+            <button type="button" data-range="day" aria-pressed="true">Latest day</button>
+            <button type="button" data-range="all" aria-pressed="false">All history</button>
+          </div>
         </div>
       </div>
       <div class="chart-meta">
@@ -113,7 +121,8 @@
       </div>
       <p id="chart-description" class="sr-only"></p>
       <p id="chart-announcement" class="sr-only" aria-live="polite"></p>
-      <p id="chart-help" class="caption">Hover, tap, or use the arrow keys to inspect a sample. Breaks mark missing observations. Short ranges end at the latest sample. Today uses Peru time.</p>
+      <p class="chart-gap-key" id="chart-gap-key" hidden><span aria-hidden="true"></span> Scheduled overnight pause · 22:00–06:00 Peru time</p>
+      <p id="chart-help" class="caption">Hover, tap, or use the arrow keys to inspect samples. Breaks mark missing observations. Time ranges end at the latest sample for the visit date.</p>
     </section>
 
     <section class="report-section" aria-labelledby="insights-title">

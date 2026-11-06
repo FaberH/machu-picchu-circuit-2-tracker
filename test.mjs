@@ -17,6 +17,7 @@ import {
   availableDates, buildHistory, csvForHistory, defaultVisitDate, freshness, peruTimestamp,
   rangeStart, samplingGap,
 } from './docs/dashboard-data.js';
+import {overnightBands, ticketAxis, timeTicks} from './docs/history-chart.js';
 
 const apiRows = [
   {nidRuta: 7, circuito: 'Circuito 1 - Panorámico', ruta: 'Ruta 1-A: Montaña Machupicchu', ncupo: 50, ncupoActual: 49},
@@ -210,12 +211,43 @@ test('statistics exclude missing intervals and suppress short windows with inade
   assert.deepEqual(only.changes, [null, null, null]);
 });
 
-test('today starts at Lima midnight and inspection retains sub-second observation precision', () => {
+test('the latest-day range starts at the latest sample’s Lima midnight', () => {
   const newest = Date.parse('2026-11-06T11:04:00.257Z');
-  assert.equal(rangeStart('today', newest, Date.parse('2026-11-07T04:59:00Z')), Date.parse('2026-11-06T05:00:00Z'));
+  assert.equal(rangeStart('day', newest), Date.parse('2026-11-06T05:00:00Z'));
+  assert.equal(rangeStart('day', Date.parse('2026-11-07T04:59:00Z')), Date.parse('2026-11-06T05:00:00Z'));
+  assert.equal(rangeStart('day'), -Infinity);
   assert.equal(rangeStart('30', newest), newest - 30 * 60_000);
   assert.equal(rangeStart('all', newest), -Infinity);
   assert.equal(peruTimestamp(newest, true), '6 Nov 2026 · 06:04:00.257');
+});
+
+test('history ticks preserve domain endpoints and use round local times between them', () => {
+  const first = Date.parse('2026-11-04T11:01:00Z');
+  const last = Date.parse('2026-11-06T02:55:00Z');
+  const ticks = timeTicks(first, last, 1080);
+  assert.equal(ticks[0], first);
+  assert.equal(ticks.at(-1), last);
+  assert.ok(ticks.length > 3);
+  assert.ok(ticks.slice(1, -1).every(time => time % 3_600_000 === 0));
+  assert.ok(timeTicks(first, last, 248).length < ticks.length);
+  assert.deepEqual(timeTicks(first, first, 248), [first]);
+});
+
+test('overnight shading respects the Peru schedule, the domain, and actual samples', () => {
+  const first = Date.parse('2026-11-04T11:00:00Z');
+  const last = Date.parse('2026-11-05T11:03:00Z');
+  const start = Date.parse('2026-11-05T03:00:00Z');
+  const end = Date.parse('2026-11-05T11:00:00Z');
+  const samples = [{time: first}, {time: end}, {time: last}];
+  assert.deepEqual(overnightBands(samples, first, last), [[start, end]]);
+  assert.deepEqual(overnightBands(samples, end - 3_600_000, last), [[end - 3_600_000, end]]);
+  assert.deepEqual(overnightBands([{time: first}, {time: start + 60_000}, {time: last}], first, last), []);
+});
+
+test('ticket axes start at zero and keep the vertical scale tight to observed counts', () => {
+  assert.deepEqual(ticketAxis(0), {step: 1, yTop: 1});
+  assert.deepEqual(ticketAxis(600), {step: 200, yTop: 600});
+  assert.deepEqual(ticketAxis(13), {step: 3, yTop: 15});
 });
 
 test('freshness is based on the selected observation, source, and collection state', () => {

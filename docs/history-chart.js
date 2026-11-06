@@ -1,4 +1,44 @@
-import {lowerBound, peruClock, peruDate, peruShortDate, peruTimestamp, rangeStart, samplingGap} from './dashboard-data.js';
+import {lowerBound, peruClock, peruDate, peruMidnight, peruShortDate, peruTimestamp, rangeStart, samplingGap} from './dashboard-data.js';
+
+const minute = 60_000;
+const hour = 60 * minute;
+const day = 24 * hour;
+const tickMinutes = [1, 2, 5, 10, 15, 30, 60, 120, 180, 240, 360, 480, 720, 1440, 2880, 4320, 10080];
+
+export function timeTicks(first, last, plotWidth) {
+  if (Math.floor(first / minute) === Math.floor(last / minute)) return [first + (last - first) / 2];
+  const span = last - first;
+  const count = Math.min(7, Math.max(3, Math.floor(plotWidth / 122) + 1));
+  const step = (tickMinutes.findLast(value => value * minute <= span / (count - 1)) ?? tickMinutes[0]) * minute;
+  const minGap = span * 62 / plotWidth;
+  const midnight = peruMidnight(first);
+  const ticks = [first];
+  for (let time = midnight + Math.ceil((first - midnight) / step) * step; time < last - minGap; time += step) {
+    if (time >= ticks.at(-1) + minGap) ticks.push(time);
+  }
+  ticks.push(last);
+  return ticks;
+}
+
+export function overnightBands(samples, first, last) {
+  const bands = [];
+  for (let start = peruMidnight(first) - 2 * hour; start < last; start += day) {
+    const end = start + 8 * hour;
+    if (end <= first) continue;
+    const observation = samples[lowerBound(samples, start)];
+    if (observation && observation.time < end) continue;
+    bands.push([Math.max(first, start), Math.min(last, end)]);
+  }
+  return bands;
+}
+
+export function ticketAxis(max) {
+  const target = Math.max(1, max / 5);
+  const magnitude = 10 ** Math.floor(Math.log10(target));
+  const step = [1, 2, 2.5, 3, 5, 10].map(value => value * magnitude)
+    .find(value => value >= target && Number.isInteger(value));
+  return {step, yTop: Math.max(step, Math.ceil(max / step) * step)};
+}
 
 const svgNode = (name, attributes = {}, text) => {
   const node = document.createElementNS('http://www.w3.org/2000/svg', name);
@@ -53,35 +93,36 @@ function routePaths(points, x, y, showDots) {
 }
 
 function drawAxes(chart, layout) {
-  const {width, height, left, right, top, yTop, y, x, first, last} = layout;
-  for (let index = 0; index <= 4; index++) {
-    const value = yTop * index / 4;
+  const {width, height, left, right, top, yTop, step, y, x, first, last} = layout;
+  for (let value = 0; value <= yTop; value += step) {
     const yy = y(value);
     chart.append(
-      svgNode('line', {x1: left, x2: width - right, y1: yy, y2: yy, class: 'grid-line'}),
+      svgNode('line', {x1: left, x2: width - right, y1: yy, y2: yy, class: value === 0 ? 'grid-line baseline' : 'grid-line'}),
       svgNode('text', {x: left - 8, y: yy + 4, 'text-anchor': 'end', class: 'axis-label'}, value.toLocaleString('en')),
     );
   }
-  const multiDay = peruDate(first) !== peruDate(last);
-  const tickCount = first === last ? 1 : width < 520 ? 3 : 5;
-  for (let index = 0; index < tickCount; index++) {
-    const time = tickCount === 1 ? first : first + (last - first) * index / (tickCount - 1);
+  const ticks = timeTicks(first, last, width - left - right);
+  let previousDate;
+  for (const [index, time] of ticks.entries()) {
     const xx = x(time);
-    const anchor = tickCount === 1 ? 'middle' : index === 0 ? 'start' : index === tickCount - 1 ? 'end' : 'middle';
-    if (tickCount > 1) {
+    const anchor = ticks.length === 1 ? 'middle' : index === 0 ? 'start' : index === ticks.length - 1 ? 'end' : 'middle';
+    if (ticks.length > 1) {
       chart.append(svgNode('line', {x1: xx, x2: xx, y1: top, y2: y(0), class: 'time-grid-line'}));
     }
-    if (multiDay || tickCount === 1) {
+    const date = peruDate(time);
+    if (date !== previousDate) {
       chart.append(svgNode('text', {x: xx, y: height - 22, 'text-anchor': anchor, class: 'axis-label date-label'}, peruShortDate(time)));
     }
+    previousDate = date;
     chart.append(svgNode('text', {x: xx, y: height - 6, 'text-anchor': anchor, class: 'axis-label'}, peruClock(time)));
   }
 }
 
-export function createHistoryChart({shell, interaction, chart, tooltip, empty, count, description, announcement}) {
+export function createHistoryChart({shell, interaction, chart, tooltip, empty, count, description, announcement, gapKey}) {
   let view;
   let samples = [];
   let shown = [];
+  let domain;
   let layout;
   let cursor;
   let activeTime = null;
@@ -134,28 +175,31 @@ export function createHistoryChart({shell, interaction, chart, tooltip, empty, c
     const width = Math.round(shell.clientWidth);
     if (!width || !view || !samples.length) return;
     drawnWidth = width;
-    const height = width < 520 ? 240 : 300;
-    const left = 47;
+    const height = width < 520 ? 240 : 310;
+    const left = width < 520 ? 40 : 48;
     const right = 12;
-    const top = 12;
+    const top = 18;
     const bottom = 45;
-    const first = samples[0].time;
-    const last = samples.at(-1).time;
+    const {first, last, bands} = domain;
     let max = 0;
     for (const route of shown) {
       for (const point of route.points) max = Math.max(max, point.available);
     }
-    const target = Math.max(1, max / 4);
-    const magnitude = 10 ** Math.floor(Math.log10(target));
-    const step = ([1, 2, 2.5, 5, 10].find(value => value * magnitude >= target && Number.isInteger(value * magnitude))) * magnitude;
-    const yTop = step * 4;
+    const {step, yTop} = ticketAxis(max);
     const plotWidth = width - left - right;
     const x = time => first === last ? left + plotWidth / 2 : left + (time - first) / (last - first) * plotWidth;
     const y = value => top + (1 - value / yTop) * (height - top - bottom);
-    layout = {width, height, left, right, top, yTop, y, x, first, last};
+    layout = {width, height, left, right, top, yTop, step, y, x, first, last};
     chart.setAttribute('viewBox', `0 0 ${width} ${height}`);
     chart.replaceChildren();
+    for (const [start, end] of bands) {
+      chart.append(svgNode('rect', {x: x(start), y: top, width: x(end) - x(start), height: y(0) - top, class: 'overnight-band'}));
+    }
     drawAxes(chart, layout);
+    for (const [start, end] of bands) {
+      if (x(end) - x(start) < 112) continue;
+      chart.append(svgNode('text', {x: x(start + (end - start) / 2), y: top + 19, 'text-anchor': 'middle', class: 'axis-label'}, 'Overnight pause'));
+    }
     for (const route of shown) {
       const {lines, dots} = routePaths(route.points, x, y, samples.length <= 28);
       if (lines) chart.append(svgNode('path', {d: lines, stroke: route.color, 'stroke-dasharray': route.dash, class: 'series-line'}));
@@ -180,10 +224,18 @@ export function createHistoryChart({shell, interaction, chart, tooltip, empty, c
     });
     samples = available.filter(sample => codes.some(route => sample.routes.has(route.code)));
     const hasSamples = samples.length > 0;
+    if (hasSamples) {
+      const first = range === '30' || range === '120' ? start : available[0].time;
+      const last = available.at(-1).time;
+      domain = {first, last, bands: overnightBands(model.samples, first, last)};
+    }
     interaction.hidden = !hasSamples;
     empty.hidden = hasSamples;
+    gapKey.hidden = !hasSamples || !domain.bands.length;
     count.textContent = hasSamples ? `${samples.length.toLocaleString('en')} ${samples.length === 1 ? 'sample' : 'samples'} · Peru time` : '';
-    description.textContent = hasSamples ? `${count.textContent}. ${codes.map(route => `Route ${route.code}`).join(', ')}.` : '';
+    description.textContent = hasSamples
+      ? `${count.textContent}. ${codes.map(route => `Route ${route.code}`).join(', ')}.${domain.bands.length ? ' Shading marks scheduled overnight pauses.' : ''}`
+      : '';
     if (hasSamples) draw();
     else {
       clearSelection();
@@ -192,13 +244,17 @@ export function createHistoryChart({shell, interaction, chart, tooltip, empty, c
   }
 
   function inspectPointer(clientX) {
-    const {first, last, left, right, width} = layout;
-    const offset = clientX - chart.getBoundingClientRect().left - left;
-    const time = first + (last - first) * offset / (width - left - right);
+    const {first, last, left, right, width, x} = layout;
+    const pointer = clientX - chart.getBoundingClientRect().left;
+    const time = first + (last - first) * (pointer - left) / (width - left - right);
     const index = lowerBound(samples, time);
     const before = samples[index - 1];
     const after = samples[index];
     const closest = !after || (before && time - before.time <= after.time - time) ? before : after;
+    if (Math.abs(x(closest.time) - pointer) > 24 && (!before || !after || samplingGap(before, after))) {
+      clearSelection();
+      return;
+    }
     if (closest.time !== activeTime) inspect(closest);
   }
 

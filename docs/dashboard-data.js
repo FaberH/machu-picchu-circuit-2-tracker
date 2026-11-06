@@ -21,6 +21,7 @@ const visitDateFormat = new Intl.DateTimeFormat('en-GB', {
 });
 
 export const peruDate = time => calendar.format(time);
+export const peruMidnight = time => Date.parse(`${peruDate(time)}T00:00:00-05:00`);
 export const peruClock = time => clock.format(time);
 export const peruShortDate = time => shortDate.format(time);
 export const peruTimestamp = (time, precise = false) => {
@@ -139,9 +140,9 @@ export function buildHistory(observations, visitDate) {
   return {rows, samples, byRoute, snapshot, totals, stats};
 }
 
-export function rangeStart(range, latestTime, now = Date.now()) {
-  if (range === 'today') return Date.parse(`${peruDate(now)}T00:00:00-05:00`);
-  return range === 'all' ? -Infinity : latestTime - Number(range) * minute;
+export function rangeStart(range, latestTime) {
+  if (range === 'all' || !Number.isFinite(latestTime)) return -Infinity;
+  return range === 'day' ? peruMidnight(latestTime) : latestTime - Number(range) * minute;
 }
 
 export function freshness({visitDate, snapshot, latest, source, failed, loading, now = Date.now()}) {
